@@ -56,7 +56,9 @@ async def call_claude(system: str, user: str) -> str:
 
     # content 블록 중 text 만 합치기
     texts = [blk["text"] for blk in data.get("content", []) if blk.get("type") == "text"]
-    return "\n".join(texts).strip()
+    result = "\n".join(texts).strip()
+    print(f"API 응답 미리보기: {result[:200]}")
+    return result
 
 
 # ── 브리핑 생성 핵심 로직 ─────────────────────────────────────────────
