@@ -37,7 +37,7 @@ async def call_claude(system: str, user: str) -> str:
         "content-type": "application/json",
     }
     payload = {
-        "model": "claude-sonnet-4-20250514",
+        "model": "claude-sonnet-4-5",
         "max_tokens": 8000,
         "system": system,
         "tools": [{"type": "web_search_20250305", "name": "web_search"}],
