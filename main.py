@@ -37,7 +37,7 @@ async def call_claude(system: str, user: str) -> str:
         "content-type": "application/json",
     }
     payload = {
-        "model": "claude-sonnet-4-5",
+        "model": "claude-haiku-4-5-20251001",
         "max_tokens": 8000,
         "system": system,
         "tools": [{"type": "web_search_20250305", "name": "web_search"}],
@@ -49,6 +49,8 @@ async def call_claude(system: str, user: str) -> str:
             headers=headers,
             json=payload,
         )
+        if not resp.is_success:
+            print(f"API 오류 상세: {resp.status_code} - {resp.text}")
         resp.raise_for_status()
         data = resp.json()
 
