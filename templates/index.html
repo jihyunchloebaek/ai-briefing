@@ -3,400 +3,263 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI 뉴스 브리핑 | 통신·IT 동향</title>
+<title>AI 뉴스 브리핑</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #ffffff;
-    --bg-secondary: #f5f5f7;
-    --bg-tertiary: #fafafa;
-    --border: #e5e5e7;
-    --border-light: #f0f0f2;
-    --text-primary: #1d1d1f;
-    --text-secondary: #6e6e73;
-    --text-tertiary: #aeaeb2;
-    --accent: #0071e3;
-    --accent-soft: #e8f1fb;
-    --green: #34c759;
-    --green-soft: #e9f8ee;
-    --orange: #ff9500;
-    --orange-soft: #fff4e5;
-    --red: #ff3b30;
-    --red-soft: #fff0ef;
-    --col-lgu: #e8007d;
-    --col-kt: #e1001e;
-    --col-skt: #e2007c;
-    --radius: 14px;
-    --radius-sm: 8px;
-  }
+:root {
+  --bg: #f5f5f7;
+  --card: #ffffff;
+  --border: #e5e5e7;
+  --accent: #0071e3;
+  --accent-soft: #e8f1fb;
+  --text: #1d1d1f;
+  --text2: #6e6e73;
+  --text3: #aeaeb2;
+  --green-soft: #e9f8ee;
+  --green-text: #1a7d35;
+  --orange-soft: #fff4e5;
+  --orange-text: #a05500;
+  --red-soft: #fff0ef;
+  --red-text: #b0140c;
+  --lgu: #e8007d;
+  --kt: #e1001e;
+  --skt: #e2007c;
+  --r: 14px;
+  --r-sm: 10px;
+}
 
-  * { margin:0; padding:0; box-sizing:border-box; -webkit-font-smoothing:antialiased; }
+* { margin:0; padding:0; box-sizing:border-box; -webkit-font-smoothing:antialiased; }
 
-  body {
-    background: var(--bg-secondary);
-    font-family: 'Noto Sans KR', 'Inter', sans-serif;
-    color: var(--text-primary);
-    min-height: 100vh;
-    padding: 32px 16px 60px;
-  }
+body {
+  background: var(--bg);
+  font-family: 'Noto Sans KR', sans-serif;
+  color: var(--text);
+  padding: 16px 14px 60px;
+  font-size: 15px;
+}
 
-  /* ── LOADING ── */
-  #loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 80vh;
-    gap: 16px;
-  }
-  .spinner {
-    width: 36px; height: 36px;
-    border: 2.5px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.75s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  #loading p { font-size: 13px; color: var(--text-tertiary); font-weight: 400; letter-spacing: -0.01em; }
+/* ── LOADING ── */
+#loading {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 85vh; gap: 14px;
+}
+.spinner {
+  width: 32px; height: 32px;
+  border: 2.5px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#loading p { font-size: 13px; color: var(--text3); }
 
-  /* ── MAIN CONTAINER ── */
-  .report {
-    max-width: 880px;
-    margin: 0 auto;
-    display: none;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .report.visible { display: flex; animation: fadeUp 0.35s ease both; }
-  @keyframes fadeUp {
-    from { opacity:0; transform:translateY(12px); }
-    to   { opacity:1; transform:translateY(0); }
-  }
+/* ── LAYOUT ── */
+.report { max-width: 720px; margin: 0 auto; display: none; flex-direction: column; gap: 10px; }
+.report.visible { display: flex; animation: up .3s ease both; }
+@keyframes up { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 
-  /* ── HEADER ── */
-  .report-header {
-    background: var(--bg);
-    border-radius: var(--radius);
-    padding: 36px 40px 28px;
-    border: 1px solid var(--border-light);
-  }
-  .header-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 20px;
-  }
-  .header-eyebrow {
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--accent);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-  }
-  .header-title {
-    font-size: clamp(26px, 4vw, 36px);
-    font-weight: 700;
-    letter-spacing: -0.03em;
-    color: var(--text-primary);
-    line-height: 1.1;
-  }
-  .header-title span { color: var(--accent); }
-  .header-meta {
-    text-align: right;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    align-items: flex-end;
-    flex-shrink: 0;
-    margin-left: 20px;
-  }
-  .date-badge {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-primary);
-    letter-spacing: -0.01em;
-  }
-  .time-badge {
-    font-size: 11px;
-    color: var(--text-tertiary);
-    font-weight: 400;
-  }
-  .refresh-btn {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
-    font-size: 12px;
-    font-weight: 500;
-    padding: 6px 14px;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: all .18s;
-    font-family: inherit;
-    letter-spacing: -0.01em;
-    margin-top: 4px;
-  }
-  .refresh-btn:hover { background: var(--border); color: var(--text-primary); }
+/* ── HEADER ── */
+.header {
+  background: var(--card);
+  border-radius: var(--r);
+  padding: 24px 20px 18px;
+}
+.header-eyebrow {
+  font-size: 11px; font-weight: 500;
+  color: var(--accent); letter-spacing: .06em;
+  text-transform: uppercase; margin-bottom: 8px;
+}
+.header-title {
+  font-size: 26px; font-weight: 700;
+  letter-spacing: -.03em; line-height: 1.1;
+  margin-bottom: 4px;
+}
+.header-title span { color: var(--accent); }
+.header-sub {
+  display: flex; justify-content: space-between;
+  align-items: center; margin-top: 14px;
+  padding-top: 14px; border-top: 1px solid var(--border);
+  flex-wrap: wrap; gap: 8px;
+}
+.date-text { font-size: 13px; font-weight: 500; color: var(--text); }
+.time-text { font-size: 12px; color: var(--text3); }
+.refresh-btn {
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--text2); font-size: 12px; font-weight: 500;
+  padding: 6px 14px; border-radius: 20px; cursor: pointer;
+  font-family: inherit; transition: all .15s;
+}
+.refresh-btn:hover { background: var(--border); }
 
-  /* ── KEYWORD PILLS ── */
-  .keyword-row {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    padding-top: 16px;
-    border-top: 1px solid var(--border-light);
-  }
-  .kw-pill {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--accent);
-    background: var(--accent-soft);
-    padding: 4px 12px;
-    border-radius: 20px;
-    letter-spacing: -0.01em;
-  }
+/* ── KEYWORDS ── */
+.keywords {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  margin-top: 14px;
+}
+.kw {
+  font-size: 12px; font-weight: 500;
+  color: var(--accent); background: var(--accent-soft);
+  padding: 4px 11px; border-radius: 20px;
+}
 
-  /* ── GENERATING NOTICE ── */
-  .generating-notice {
-    background: var(--accent-soft);
-    border: 1px solid #c0d8f5;
-    border-radius: var(--radius-sm);
-    padding: 14px 20px;
-    font-size: 13px;
-    color: var(--accent);
-    font-weight: 500;
-    display: none;
-    text-align: center;
-  }
+/* ── GENERATING ── */
+.gen-notice {
+  background: var(--accent-soft); border-radius: var(--r-sm);
+  padding: 14px 18px; font-size: 13px;
+  color: var(--accent); font-weight: 500;
+  text-align: center; display: none;
+}
 
-  /* ── SECTION CARD ── */
-  .card {
-    background: var(--bg);
-    border-radius: var(--radius);
-    border: 1px solid var(--border-light);
-    overflow: hidden;
-  }
-  .card-header {
-    padding: 20px 28px 16px;
-    border-bottom: 1px solid var(--border-light);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .card-num {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--accent);
-    background: var(--accent-soft);
-    width: 22px; height: 22px;
-    border-radius: 6px;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }
-  .card-title {
-    font-size: 15px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    color: var(--text-primary);
-  }
+/* ── SECTION CARD ── */
+.card { background: var(--card); border-radius: var(--r); overflow: hidden; }
+.card-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.card-num {
+  width: 22px; height: 22px; border-radius: 6px;
+  background: var(--accent-soft); color: var(--accent);
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.card-title { font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
 
-  /* ── TELCO TABLE ── */
-  .telco-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-  }
-  .telco-table th {
-    padding: 11px 16px;
-    font-weight: 600;
-    font-size: 12px;
-    text-align: left;
-    letter-spacing: -0.01em;
-    background: var(--bg-tertiary);
-    border-bottom: 1px solid var(--border);
-    color: var(--text-secondary);
-  }
-  .telco-table th.lgu { color: var(--col-lgu); }
-  .telco-table th.kt  { color: var(--col-kt); }
-  .telco-table th.skt { color: var(--col-skt); }
-  .telco-table td {
-    padding: 13px 16px;
-    vertical-align: top;
-    border-bottom: 1px solid var(--border-light);
-    line-height: 1.65;
-    color: var(--text-primary);
-  }
-  .telco-table tr:last-child td { border-bottom: none; }
-  .telco-table tr:hover td { background: var(--bg-secondary); }
-  .telco-table td.row-label {
-    font-weight: 600;
-    font-size: 11.5px;
-    color: var(--text-secondary);
-    white-space: nowrap;
-    background: var(--bg-tertiary);
-    border-right: 1px solid var(--border-light);
-    width: 64px;
-  }
-  .none-cell { color: var(--text-tertiary); font-style: italic; font-size: 12px; }
+/* ── TELCO: 모바일에서 탭 방식 ── */
+.telco-tabs {
+  display: flex; border-bottom: 1px solid var(--border);
+}
+.telco-tab {
+  flex: 1; padding: 10px 6px; font-size: 13px; font-weight: 600;
+  text-align: center; cursor: pointer; color: var(--text2);
+  border-bottom: 2.5px solid transparent;
+  transition: all .15s; letter-spacing: -.01em;
+}
+.telco-tab.active-lgu { color: var(--lgu); border-color: var(--lgu); }
+.telco-tab.active-kt  { color: var(--kt);  border-color: var(--kt);  }
+.telco-tab.active-skt { color: var(--skt); border-color: var(--skt); }
+.telco-panel { display: none; padding: 4px 0; }
+.telco-panel.active { display: block; }
+.telco-row {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 13px 20px; border-bottom: 1px solid var(--border);
+}
+.telco-row:last-child { border-bottom: none; }
+.telco-label {
+  font-size: 11px; font-weight: 600; color: var(--text2);
+  min-width: 38px; padding-top: 2px; letter-spacing: .01em;
+}
+.telco-val { font-size: 14px; line-height: 1.6; color: var(--text); flex: 1; }
+.telco-val.empty { color: var(--text3); font-style: italic; font-size: 13px; }
 
-  /* ── SUMMARY LIST ── */
-  .summary-list { padding: 4px 0; }
-  .summary-item {
-    display: flex;
-    gap: 14px;
-    align-items: flex-start;
-    padding: 14px 28px;
-    border-bottom: 1px solid var(--border-light);
-    transition: background .15s;
-  }
-  .summary-item:last-child { border-bottom: none; }
-  .summary-item:hover { background: var(--bg-secondary); }
-  .summary-dot {
-    width: 6px; height: 6px;
-    background: var(--accent);
-    border-radius: 50%;
-    flex-shrink: 0;
-    margin-top: 7px;
-  }
-  .summary-text { font-size: 13.5px; line-height: 1.7; color: var(--text-primary); letter-spacing: -0.01em; }
+/* ── SUMMARY ── */
+.summary-item {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+}
+.summary-item:last-child { border-bottom: none; }
+.dot {
+  width: 7px; height: 7px; background: var(--accent);
+  border-radius: 50%; flex-shrink: 0; margin-top: 6px;
+}
+.summary-text { font-size: 14px; line-height: 1.7; color: var(--text); }
 
-  /* ── COMPANY GRID ── */
-  .company-grid { display: grid; grid-template-columns: 88px 1fr 1fr; }
-  .cg-head {
-    padding: 10px 16px;
-    font-size: 11px; font-weight: 600;
-    color: var(--text-secondary);
-    background: var(--bg-tertiary);
-    border-bottom: 1px solid var(--border);
-    letter-spacing: -0.01em;
-  }
-  .cg-head:not(:last-child) { border-right: 1px solid var(--border-light); }
-  .cg-name {
-    padding: 13px 16px;
-    font-size: 12.5px; font-weight: 600;
-    color: var(--text-primary);
-    background: var(--bg-tertiary);
-    border-bottom: 1px solid var(--border-light);
-    border-right: 1px solid var(--border-light);
-    display: flex; align-items: flex-start;
-    letter-spacing: -0.02em;
-  }
-  .cg-cell {
-    padding: 13px 16px;
-    font-size: 13px; line-height: 1.65;
-    color: var(--text-primary);
-    border-bottom: 1px solid var(--border-light);
-    letter-spacing: -0.01em;
-  }
-  .cg-cell:not(:last-child) { border-right: 1px solid var(--border-light); }
-  .company-grid > *:nth-last-child(-n+3) { border-bottom: none; }
+/* ── COMPANIES 아이콘 카드 ── */
+.company-item {
+  display: flex; gap: 14px; align-items: flex-start;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  text-decoration: none; color: inherit;
+  transition: background .12s;
+}
+.company-item:last-child { border-bottom: none; }
+.company-item:hover { background: var(--bg); }
+.company-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; flex-shrink: 0;
+  background: var(--bg);
+}
+.company-content { flex: 1; min-width: 0; }
+.company-name {
+  font-size: 14px; font-weight: 700;
+  letter-spacing: -.02em; margin-bottom: 5px;
+  display: flex; align-items: center; gap: 6px;
+}
+.company-name .link-arrow {
+  font-size: 13px; color: var(--accent);
+  opacity: 0; transition: opacity .15s;
+}
+.company-item:hover .link-arrow { opacity: 1; }
+.company-summary {
+  font-size: 13.5px; line-height: 1.65;
+  color: var(--text2); letter-spacing: -.01em;
+}
 
-  /* ── QUALITY GRID ── */
-  .quality-grid { display: grid; grid-template-columns: 96px 100px 1fr; }
-  .qg-head {
-    padding: 10px 16px;
-    font-size: 11px; font-weight: 600;
-    color: var(--text-secondary);
-    background: var(--bg-tertiary);
-    border-bottom: 1px solid var(--border);
-    letter-spacing: -0.01em;
-  }
-  .qg-head:not(:last-child) { border-right: 1px solid var(--border-light); }
-  .qg-type {
-    padding: 13px 16px;
-    border-bottom: 1px solid var(--border-light);
-    border-right: 1px solid var(--border-light);
-    display: flex; align-items: center;
-  }
-  .qg-company {
-    padding: 13px 16px;
-    font-size: 13px; font-weight: 600;
-    border-bottom: 1px solid var(--border-light);
-    border-right: 1px solid var(--border-light);
-    display: flex; align-items: center;
-    letter-spacing: -0.02em;
-  }
-  .qg-desc {
-    padding: 13px 16px;
-    font-size: 13px; line-height: 1.65;
-    border-bottom: 1px solid var(--border-light);
-    color: var(--text-primary);
-    display: flex; align-items: center;
-    letter-spacing: -0.01em;
-  }
-  .quality-grid > *:nth-last-child(-n+3) { border-bottom: none; }
-  .badge {
-    font-size: 11px; font-weight: 500;
-    padding: 3px 9px; border-radius: 20px;
-    white-space: nowrap; letter-spacing: -0.01em;
-  }
-  .badge-improve  { background: var(--green-soft);   color: #1a7d35; }
-  .badge-security { background: var(--orange-soft);  color: #a05500; }
-  .badge-failure  { background: var(--red-soft);     color: #b0140c; }
-  .badge-none     { background: var(--bg-secondary); color: var(--text-tertiary); }
+/* ── QUALITY ── */
+.quality-item {
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.quality-item:last-child { border-bottom: none; }
+.quality-top { display: flex; align-items: center; gap: 8px; }
+.badge {
+  font-size: 11px; font-weight: 500;
+  padding: 3px 9px; border-radius: 20px; white-space: nowrap;
+}
+.badge-improve  { background: var(--green-soft);  color: var(--green-text); }
+.badge-security { background: var(--orange-soft); color: var(--orange-text); }
+.badge-failure  { background: var(--red-soft);    color: var(--red-text); }
+.badge-none     { background: var(--bg);          color: var(--text3); }
+.quality-company { font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+.quality-desc { font-size: 13.5px; line-height: 1.65; color: var(--text2); }
 
-  /* ── AI NEWS ── */
-  .ai-news-list { padding: 4px 0; }
-  .ai-card {
-    display: block;
-    padding: 18px 28px;
-    border-bottom: 1px solid var(--border-light);
-    text-decoration: none;
-    color: inherit;
-    transition: background .15s;
-  }
-  .ai-card:last-child { border-bottom: none; }
-  .ai-card:hover { background: var(--bg-secondary); }
-  .ai-card-inner { display: flex; gap: 16px; align-items: flex-start; }
-  .ai-card-content { flex: 1; min-width: 0; }
-  .ai-card-title {
-    font-size: 14px; font-weight: 600;
-    line-height: 1.45; margin-bottom: 10px;
-    letter-spacing: -0.02em;
-    color: var(--text-primary);
-  }
-  .ai-card.has-url .ai-card-title { color: var(--accent); }
-  .ai-card-bullets { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
-  .ai-card-bullet {
-    font-size: 12.5px; line-height: 1.6;
-    color: var(--text-secondary); letter-spacing: -0.01em;
-  }
-  .ai-card-source {
-    font-size: 11px; font-weight: 500;
-    color: var(--text-tertiary);
-    display: flex; align-items: center; gap: 5px;
-    letter-spacing: -0.01em;
-  }
-  .ai-card-source::before { content: 'from.'; color: var(--accent); font-weight: 600; }
-  .ai-card-arrow {
-    font-size: 18px; color: var(--text-tertiary);
-    flex-shrink: 0; margin-top: 0;
-    transition: transform .15s, color .15s;
-    line-height: 1;
-  }
-  .ai-card.has-url:hover .ai-card-arrow { color: var(--accent); transform: translateX(3px); }
+/* ── AI NEWS ── */
+.ai-card {
+  display: block; padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none; color: inherit;
+  transition: background .12s;
+}
+.ai-card:last-child { border-bottom: none; }
+.ai-card:hover { background: var(--bg); }
+.ai-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.ai-card-title {
+  font-size: 14.5px; font-weight: 600;
+  line-height: 1.45; letter-spacing: -.02em;
+  color: var(--text); margin-bottom: 10px; flex: 1;
+}
+.ai-card.has-url .ai-card-title {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: rgba(0,113,227,0.3);
+  text-underline-offset: 3px;
+}
+.ai-arrow { font-size: 20px; color: var(--text3); flex-shrink: 0; line-height: 1.2; transition: transform .15s; }
+.ai-card.has-url:hover .ai-arrow { transform: translateX(3px); color: var(--accent); }
+.ai-bullets { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+.ai-bullet { font-size: 13px; line-height: 1.65; color: var(--text2); }
+.ai-source {
+  font-size: 11.5px; font-weight: 500; color: var(--text3);
+  display: flex; align-items: center; gap: 4px;
+}
+.ai-source::before { content: 'from.'; color: var(--accent); font-weight: 600; }
 
-  /* ── FOOTER ── */
-  .report-footer {
-    text-align: center;
-    padding: 8px;
-    font-size: 11px;
-    color: var(--text-tertiary);
-    letter-spacing: -0.01em;
-  }
+/* ── FOOTER ── */
+.footer {
+  text-align: center; font-size: 11px;
+  color: var(--text3); padding: 6px;
+}
 
-  @media(max-width:600px) {
-    body { padding: 16px 12px 40px; }
-    .report-header { padding: 24px 20px 20px; }
-    .header-top { flex-direction: column; gap: 12px; }
-    .header-meta { text-align: left; align-items: flex-start; margin-left: 0; }
-    .card-header { padding: 16px 20px 14px; }
-    .summary-item, .ai-card { padding: 13px 20px; }
-    .telco-table th, .telco-table td { padding: 9px 10px; font-size: 11.5px; }
-    .company-grid { grid-template-columns: 68px 1fr 1fr; }
-    .quality-grid { grid-template-columns: 80px 88px 1fr; }
-  }
+@media(min-width: 640px) {
+  body { padding: 28px 20px 60px; }
+  .header { padding: 32px 28px 22px; }
+  .header-title { font-size: 32px; }
+  .card-header { padding: 20px 28px 16px; }
+  .telco-row, .summary-item, .quality-item, .ai-card, .company-item { padding-left: 28px; padding-right: 28px; }
+}
 </style>
 </head>
 <body>
@@ -408,24 +271,22 @@
 
 <div class="report" id="report">
 
-  <div class="generating-notice" id="generatingNotice">
+  <div class="gen-notice" id="genNotice">
     ⏳ 오늘의 AI 브리핑을 생성 중입니다. 잠시 후 자동으로 새로고침됩니다…
   </div>
 
   <!-- HEADER -->
-  <div class="report-header">
-    <div class="header-top">
+  <div class="header">
+    <div class="header-eyebrow">사내 AI 뉴스 브리핑 · Daily</div>
+    <h1 class="header-title">통신·IT <span>AI</span> 브리핑</h1>
+    <div class="header-sub">
       <div>
-        <div class="header-eyebrow">사내 AI 뉴스 브리핑 · Daily Edition</div>
-        <h1 class="header-title">통신·IT <span>AI</span> 브리핑</h1>
+        <div class="date-text" id="dateDisplay">—</div>
+        <div class="time-text" id="generatedAt">—</div>
       </div>
-      <div class="header-meta">
-        <div class="date-badge" id="dateDisplay">—</div>
-        <div class="time-badge" id="generatedAt">—</div>
-        <button class="refresh-btn" onclick="loadBriefing()">↺ 새로고침</button>
-      </div>
+      <button class="refresh-btn" onclick="loadBriefing()">↺ 새로고침</button>
     </div>
-    <div class="keyword-row" id="keywordBar"></div>
+    <div class="keywords" id="keywordBar"></div>
   </div>
 
   <!-- 01 통신업계 -->
@@ -434,17 +295,14 @@
       <div class="card-num">1</div>
       <h2 class="card-title">통신업계 주요 동향</h2>
     </div>
-    <table class="telco-table">
-      <thead>
-        <tr>
-          <th style="width:64px;">구분</th>
-          <th class="lgu">LG유플러스</th>
-          <th class="kt">KT</th>
-          <th class="skt">SKT</th>
-        </tr>
-      </thead>
-      <tbody id="telcoBody"></tbody>
-    </table>
+    <div class="telco-tabs">
+      <div class="telco-tab" id="tab-LGU" onclick="switchTab('LGU')">LG유플러스</div>
+      <div class="telco-tab" id="tab-KT"  onclick="switchTab('KT')">KT</div>
+      <div class="telco-tab" id="tab-SKT" onclick="switchTab('SKT')">SKT</div>
+    </div>
+    <div id="panel-LGU" class="telco-panel"></div>
+    <div id="panel-KT"  class="telco-panel"></div>
+    <div id="panel-SKT" class="telco-panel"></div>
   </div>
 
   <!-- 02 뉴스 요약 -->
@@ -453,21 +311,16 @@
       <div class="card-num">2</div>
       <h2 class="card-title">오늘 뉴스 흐름 요약</h2>
     </div>
-    <div class="summary-list" id="summaryList"></div>
+    <div id="summaryList"></div>
   </div>
 
   <!-- 03 기업 동향 -->
   <div class="card">
     <div class="card-header">
       <div class="card-num">3</div>
-      <h2 class="card-title">주요 기업 동향 (품질 · AI)</h2>
+      <h2 class="card-title">주요 기업 동향</h2>
     </div>
-    <div class="company-grid">
-      <div class="cg-head">기업</div>
-      <div class="cg-head">품질 동향</div>
-      <div class="cg-head">AI 동향</div>
-      <div id="companyRows" style="display:contents;"></div>
-    </div>
+    <div id="companyList"></div>
   </div>
 
   <!-- 04 품질 사고 -->
@@ -476,12 +329,7 @@
       <div class="card-num">4</div>
       <h2 class="card-title">품질 사고 및 개선 사례</h2>
     </div>
-    <div class="quality-grid">
-      <div class="qg-head">유형</div>
-      <div class="qg-head">기업/기관</div>
-      <div class="qg-head">내용 요약</div>
-      <div id="qualityRows" style="display:contents;"></div>
-    </div>
+    <div id="qualityList"></div>
   </div>
 
   <!-- 05 AI 동향 뉴스 -->
@@ -490,135 +338,174 @@
       <div class="card-num">5</div>
       <h2 class="card-title">AI 동향 뉴스</h2>
     </div>
-    <div class="ai-news-list" id="aiNewsGrid"></div>
+    <div id="aiNewsList"></div>
   </div>
 
-  <div class="report-footer">Generated by Claude AI · 매일 오전 09:00 KST 자동 갱신</div>
-
+  <div class="footer">Generated by Claude AI · 매일 오전 09:00 KST 자동 갱신</div>
 </div>
 
 <script>
 const badgeMap = {
-  '품질개선': 'badge-improve',
-  '보안사고': 'badge-security',
-  '장애사고': 'badge-failure',
-  '해당없음': 'badge-none',
+  '품질개선':'badge-improve','보안사고':'badge-security',
+  '장애사고':'badge-failure','해당없음':'badge-none'
 };
 
 function esc(s) {
-  return String(s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── TELCO 탭 ── */
+let telcoData = {};
+function switchTab(co) {
+  ['LGU','KT','SKT'].forEach(c => {
+    const tab = document.getElementById('tab-'+c);
+    const panel = document.getElementById('panel-'+c);
+    const activeClass = 'active-'+c.toLowerCase();
+    tab.classList.remove('active-lgu','active-kt','active-skt');
+    panel.classList.remove('active');
+  });
+  document.getElementById('tab-'+co).classList.add('active-'+co.toLowerCase());
+  document.getElementById('panel-'+co).classList.add('active');
 }
 
 function renderTelco(telco) {
-  const tbody = document.getElementById('telcoBody');
-  ['품질','AI','신사업'].forEach(row => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td class="row-label">${esc(row)}</td>` +
-      ['LGU','KT','SKT'].map(co => {
-        const val = telco[co]?.[row] || '관련 동향 없음';
-        const isEmpty = val === '관련 동향 없음' || val === '정보 없음';
-        return `<td>${isEmpty ? `<span class="none-cell">${esc(val)}</span>` : esc(val)}</td>`;
-      }).join('');
-    tbody.appendChild(tr);
+  telcoData = telco;
+  ['LGU','KT','SKT'].forEach(co => {
+    const panel = document.getElementById('panel-'+co);
+    const data = telco[co] || {};
+    panel.innerHTML = ['품질','AI','신사업'].map(row => {
+      const val = data[row] || '관련 동향 없음';
+      const isEmpty = val === '관련 동향 없음' || val === '정보 없음';
+      return `<div class="telco-row">
+        <div class="telco-label">${esc(row)}</div>
+        <div class="telco-val${isEmpty?' empty':''}">${esc(val)}</div>
+      </div>`;
+    }).join('');
   });
+  switchTab('LGU');
 }
 
+/* ── SUMMARY ── */
 function renderSummary(summary) {
-  const list = document.getElementById('summaryList');
-  summary.forEach(text => {
-    list.innerHTML += `
+  document.getElementById('summaryList').innerHTML =
+    (summary||[]).map(text => `
       <div class="summary-item">
-        <div class="summary-dot"></div>
+        <div class="dot"></div>
         <p class="summary-text">${esc(text)}</p>
-      </div>`;
-  });
+      </div>`).join('');
+}
+
+/* ── COMPANIES 아이콘 매핑 ── */
+const companyIcons = {
+  '네이버': '🟢', '카카오': '🟡', '현대차': '🚗', '현대': '🚗',
+  '삼성': '📱', '삼성전자': '📱', 'LG': '⚡', 'LG전자': '⚡',
+  '쿠팡': '📦', 'SK': '🔷', 'SK텔레콤': '🔷', 'SKT': '🔷',
+  'KT': '🔴', 'LG유플러스': '💜', 'LGU+': '💜',
+  '카카오페이': '💛', '토스': '💙', '배달의민족': '🛵',
+  '당근': '🥕', '당근마켓': '🥕', '라인': '💚', '라인플러스': '💚',
+  '구글': '🔍', 'Google': '🔍', '애플': '🍎', 'Apple': '🍎',
+  '마이크로소프트': '🪟', 'Microsoft': '🪟', 'MS': '🪟',
+  '메타': '🔵', 'Meta': '🔵', '아마존': '📦', 'Amazon': '📦',
+  '엔비디아': '🟩', 'NVIDIA': '🟩', 'OpenAI': '⚫',
+  '시장 전반': '📊', '시장': '📊',
+};
+
+function getIcon(name) {
+  for (const [key, icon] of Object.entries(companyIcons)) {
+    if (name.includes(key)) return icon;
+  }
+  return '🏢';
 }
 
 function renderCompanies(companies) {
-  const wrap = document.getElementById('companyRows');
-  companies.forEach(c => {
-    const q = c.quality || c.one_line || '해당없음';
-    const a = c.ai || '해당없음';
-    wrap.innerHTML += `
-      <div class="cg-name">${esc(c.name)}</div>
-      <div class="cg-cell">${esc(q)}</div>
-      <div class="cg-cell">${esc(a)}</div>`;
-  });
-}
-
-function renderQuality(quality) {
-  const wrap = document.getElementById('qualityRows');
-  quality.forEach(q => {
-    const cls = badgeMap[q.type] || 'badge-none';
-    wrap.innerHTML += `
-      <div class="qg-type"><span class="badge ${cls}">${esc(q.type)}</span></div>
-      <div class="qg-company">${esc(q.company)}</div>
-      <div class="qg-desc">${esc(q.desc)}</div>`;
-  });
-}
-
-function renderAiNews(news) {
-  const grid = document.getElementById('aiNewsGrid');
-  news.forEach(item => {
-    const bullets = (item.bullets || [])
-      .map(b => `<div class="ai-card-bullet">${esc(b)}</div>`)
-      .join('');
-    const hasUrl = item.url && item.url.startsWith('http');
-    const tag = hasUrl ? 'a' : 'div';
-    const attrs = hasUrl ? `href="${esc(item.url)}" target="_blank" rel="noopener"` : '';
-    const arrow = hasUrl ? '<div class="ai-card-arrow">›</div>' : '';
-    grid.innerHTML += `
-      <${tag} class="ai-card${hasUrl ? ' has-url' : ''}" ${attrs}>
-        <div class="ai-card-inner">
-          <div class="ai-card-content">
-            <div class="ai-card-title">${esc(item.title)}</div>
-            <div class="ai-card-bullets">${bullets}</div>
-            <div class="ai-card-source">${esc(item.source)}</div>
+  document.getElementById('companyList').innerHTML =
+    (companies||[]).map(c => {
+      const icon = getIcon(c.name);
+      const summary = c.summary || c.one_line || '';
+      const hasUrl = c.url && c.url.startsWith('http');
+      const tag = hasUrl ? 'a' : 'div';
+      const attrs = hasUrl ? `href="${esc(c.url)}" target="_blank" rel="noopener"` : '';
+      const arrow = hasUrl ? '<span class="link-arrow">↗</span>' : '';
+      return `
+        <${tag} class="company-item" ${attrs}>
+          <div class="company-icon">${icon}</div>
+          <div class="company-content">
+            <div class="company-name">${esc(c.name)}${arrow}</div>
+            <div class="company-summary">${esc(summary)}</div>
           </div>
-          ${arrow}
-        </div>
-      </${tag}>`;
-  });
+        </${tag}>`;
+    }).join('');
 }
 
+/* ── QUALITY ── */
+function renderQuality(quality) {
+  document.getElementById('qualityList').innerHTML =
+    (quality||[]).map(q => {
+      const cls = badgeMap[q.type] || 'badge-none';
+      return `
+        <div class="quality-item">
+          <div class="quality-top">
+            <span class="badge ${cls}">${esc(q.type)}</span>
+            <span class="quality-company">${esc(q.company)}</span>
+          </div>
+          <div class="quality-desc">${esc(q.desc)}</div>
+        </div>`;
+    }).join('');
+}
+
+/* ── AI NEWS ── */
+function renderAiNews(news) {
+  document.getElementById('aiNewsList').innerHTML =
+    (news||[]).map(item => {
+      const hasUrl = item.url && item.url.startsWith('http');
+      const tag = hasUrl ? 'a' : 'div';
+      const attrs = hasUrl ? `href="${esc(item.url)}" target="_blank" rel="noopener"` : '';
+      const arrow = hasUrl ? '<div class="ai-arrow">›</div>' : '';
+      const bullets = (item.bullets||[]).map(b =>
+        `<div class="ai-bullet">${esc(b)}</div>`).join('');
+      return `
+        <${tag} class="ai-card${hasUrl?' has-url':''}" ${attrs}>
+          <div class="ai-card-top">
+            <div class="ai-card-title">${esc(item.title)}</div>
+            ${arrow}
+          </div>
+          <div class="ai-bullets">${bullets}</div>
+          <div class="ai-source">${esc(item.source)}</div>
+        </${tag}>`;
+    }).join('');
+}
+
+/* ── KEYWORDS ── */
 function renderKeywords(keywords) {
-  const bar = document.getElementById('keywordBar');
-  keywords.forEach(kw => {
-    const pill = document.createElement('span');
-    pill.className = 'kw-pill';
-    pill.textContent = kw;
-    bar.appendChild(pill);
-  });
+  document.getElementById('keywordBar').innerHTML =
+    (keywords||[]).map(kw => `<span class="kw">${esc(kw)}</span>`).join('');
 }
 
+/* ── LOAD ── */
 async function loadBriefing() {
   document.getElementById('loading').style.display = 'flex';
   document.getElementById('report').classList.remove('visible');
-  ['telcoBody','summaryList','companyRows','qualityRows','aiNewsGrid','keywordBar']
-    .forEach(id => { document.getElementById(id).innerHTML = ''; });
 
   try {
     const resp = await fetch('/api/briefing');
     if (resp.status === 202) {
       document.getElementById('loading').style.display = 'none';
       document.getElementById('report').classList.add('visible');
-      document.getElementById('generatingNotice').style.display = 'block';
+      document.getElementById('genNotice').style.display = 'block';
       setTimeout(loadBriefing, 8000);
       return;
     }
     const data = await resp.json();
     document.getElementById('dateDisplay').textContent = data.date || '';
     document.getElementById('generatedAt').textContent = data.generated_at
-      ? new Date(data.generated_at).toLocaleString('ko-KR', {hour:'2-digit', minute:'2-digit'}) + ' 기준'
+      ? new Date(data.generated_at).toLocaleString('ko-KR',{hour:'2-digit',minute:'2-digit'})+' 기준'
       : '';
-    renderKeywords(data.keywords || []);
-    renderTelco(data.telco || {});
-    renderSummary(data.summary || []);
-    renderCompanies(data.companies || []);
-    renderQuality(data.quality || []);
-    renderAiNews(data.ai_news || []);
+    renderKeywords(data.keywords||[]);
+    renderTelco(data.telco||{});
+    renderSummary(data.summary||[]);
+    renderCompanies(data.companies||[]);
+    renderQuality(data.quality||[]);
+    renderAiNews(data.ai_news||[]);
   } catch(e) { console.error(e); }
 
   document.getElementById('loading').style.display = 'none';
