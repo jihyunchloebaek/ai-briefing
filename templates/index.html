@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 뉴스 브리핑 | 통신·IT 동향</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0d0d0d;
+    --paper: #f5f0e8;
+    --paper-dark: #ede8dc;
+    --accent: #c8102e;
+    --gold: #b8860b;
+    --muted: #6b6357;
+    --rule: #c5beb2;
+    --col-lgu: #e8007d;
+    --col-kt: #e1001e;
+    --col-skt: #ec008c;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: #ddd8cd;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 32px 16px;
+  }
+
+  /* ── LOADING ── */
+  #loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    gap: 20px;
+    color: var(--muted);
+  }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--rule);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loading p { font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.1em; }
+
+  /* ── NEWSPAPER ── */
+  .newspaper {
+    max-width: 920px;
+    margin: 0 auto;
+    background: var(--paper);
+    box-shadow: 0 6px 48px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.1);
+    display: none;
+  }
+  .newspaper.visible { display: block; animation: fadeSlide 0.4s ease both; }
+  @keyframes fadeSlide {
+    from { opacity:0; transform:translateY(16px); }
+    to { opacity:1; transform:translateY(0); }
+  }
+
+  /* ── MASTHEAD ── */
+  .masthead {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 28px 44px 22px;
+    border-bottom: 4px solid var(--accent);
+    position: relative;
+    overflow: hidden;
+  }
+  .masthead::after {
+    content:'';
+    position:absolute; top:0; right:0;
+    width:220px; height:100%;
+    background: linear-gradient(135deg, transparent 55%, rgba(200,16,46,.12) 100%);
+  }
+  .masthead-meta {
+    display:flex; justify-content:space-between; align-items:center;
+    font-family:'DM Mono',monospace; font-size:10px;
+    letter-spacing:.15em; color:#999; margin-bottom:12px; text-transform:uppercase;
+  }
+  .edition-tag {
+    background:var(--accent); color:#fff;
+    padding:2px 8px; font-size:9px; letter-spacing:.2em;
+  }
+  .masthead-title {
+    font-family:'Noto Serif KR',serif;
+    font-size:clamp(32px,6vw,52px);
+    font-weight:700; letter-spacing:-0.02em; line-height:1; margin-bottom:8px;
+  }
+  .masthead-title span { color:var(--accent); }
+  .masthead-sub {
+    font-family:'DM Mono',monospace; font-size:11px;
+    letter-spacing:.25em; color:#aaa; text-transform:uppercase;
+  }
+
+  /* ── DATE STRIP ── */
+  .date-strip {
+    background:var(--ink); border-top:1px solid #2a2a2a;
+    padding:8px 44px;
+    display:flex; justify-content:space-between; align-items:center;
+    font-family:'DM Mono',monospace; font-size:10px; color:#888; letter-spacing:.1em;
+  }
+  .date-strip .today { color:var(--paper); font-weight:500; }
+
+  /* ── KEYWORD BAR ── */
+  .keyword-bar {
+    background:var(--accent); padding:9px 44px;
+    display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+  }
+  .kw-label {
+    font-family:'DM Mono',monospace; font-size:9px;
+    letter-spacing:.2em; color:rgba(255,255,255,.55); text-transform:uppercase; margin-right:4px;
+  }
+  .kw-tag {
+    font-size:11px; color:#fff; font-weight:500;
+    padding:2px 10px; border:1px solid rgba(255,255,255,.35); border-radius:2px; letter-spacing:.04em;
+  }
+
+  /* ── BODY ── */
+  .body-wrap { padding:38px 44px; display:flex; flex-direction:column; gap:38px; }
+
+  /* ── SECTION ── */
+  .section-header {
+    display:flex; align-items:baseline; gap:12px;
+    border-bottom:2px solid var(--ink); padding-bottom:8px; margin-bottom:18px;
+  }
+  .section-num {
+    font-family:'DM Mono',monospace; font-size:10px;
+    color:var(--accent); letter-spacing:.2em; font-weight:500;
+    padding:2px 6px; border:1px solid var(--accent);
+  }
+  .section-title { font-family:'Noto Serif KR',serif; font-size:18px; font-weight:700; }
+
+  /* ── TELCO TABLE ── */
+  .telco-grid {
+    display:grid; grid-template-columns:80px 1fr 1fr 1fr;
+    border:1px solid var(--rule); overflow:hidden; border-radius:2px;
+  }
+  .tg-cell {
+    padding:12px 13px; font-size:12.5px; line-height:1.55;
+    border-bottom:1px solid var(--rule); border-right:1px solid var(--rule);
+  }
+  .tg-cell:nth-child(4n) { border-right:none; }
+  .tg-cell:nth-last-child(-n+4) { border-bottom:none; }
+  .tg-head {
+    background:var(--ink); color:var(--paper);
+    font-family:'DM Mono',monospace; font-size:10px;
+    letter-spacing:.15em; font-weight:500; text-align:center; padding:10px 6px;
+  }
+  .tg-head.lgu { background:var(--col-lgu); }
+  .tg-head.kt  { background:var(--col-kt); }
+  .tg-head.skt { background:var(--col-skt); }
+  .tg-label {
+    background:var(--paper-dark); font-size:11px; font-weight:700;
+    letter-spacing:.05em; color:var(--muted); text-align:center;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .tag-ai {
+    display:inline-block; background:var(--accent); color:#fff;
+    font-size:9px; padding:1px 5px; border-radius:2px;
+    margin-left:4px; font-family:'DM Mono',monospace;
+    letter-spacing:.05em; vertical-align:middle;
+  }
+  .none-text { color:#bbb; font-style:italic; font-size:11px; }
+
+  /* ── NEWS FLOW ── */
+  .news-flow { display:flex; flex-direction:column; gap:10px; }
+  .news-item {
+    display:flex; gap:14px; align-items:flex-start;
+    padding:13px 16px; background:#fff;
+    border-left:3px solid var(--rule); transition:border-color .2s;
+  }
+  .news-item:hover { border-left-color:var(--accent); }
+  .news-bullet {
+    width:20px; height:20px; background:var(--ink); border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0; margin-top:2px;
+  }
+  .news-bullet::after {
+    content:''; width:6px; height:6px; background:var(--paper); border-radius:50%;
+  }
+  .news-text { font-size:13.5px; line-height:1.65; color:#222; }
+
+  /* ── COMPANY TABLE ── */
+  .company-table { border:1px solid var(--rule); border-radius:2px; overflow:hidden; }
+  .ct-row {
+    display:grid; grid-template-columns:90px 1fr;
+    border-bottom:1px solid var(--rule);
+  }
+  .ct-row:last-child { border-bottom:none; }
+  .ct-row:hover .ct-body { background:#faf8f4; }
+  .ct-name {
+    background:var(--paper-dark); padding:12px 14px;
+    font-weight:700; font-size:13px;
+    display:flex; align-items:center;
+    border-right:1px solid var(--rule); letter-spacing:-0.01em;
+  }
+  .ct-body { padding:12px 16px; font-size:13px; line-height:1.6; color:#222; transition:background .2s; }
+  .market-row .ct-name { background:var(--ink); color:var(--paper); font-size:11px; letter-spacing:.05em; }
+  .market-row .ct-body { background:#f8f5f0; font-style:italic; color:var(--muted); }
+
+  /* ── QUALITY TABLE ── */
+  .quality-table { border:1px solid var(--rule); overflow:hidden; border-radius:2px; }
+  .qt-head {
+    display:grid; grid-template-columns:100px 110px 1fr;
+    background:var(--ink); color:var(--paper);
+  }
+  .qt-cell {
+    padding:9px 14px; font-family:'DM Mono',monospace;
+    font-size:10px; letter-spacing:.1em;
+    border-right:1px solid #333;
+  }
+  .qt-cell:last-child { border-right:none; }
+  .qt-row {
+    display:grid; grid-template-columns:100px 110px 1fr;
+    border-bottom:1px solid var(--rule);
+  }
+  .qt-row:last-child { border-bottom:none; }
+  .qt-row:hover { background:#faf8f4; }
+  .qt-type { padding:12px 14px; display:flex; align-items:center; border-right:1px solid var(--rule); }
+  .qt-company { padding:12px 14px; font-size:12.5px; font-weight:700; border-right:1px solid var(--rule); display:flex; align-items:center; }
+  .qt-desc { padding:12px 16px; font-size:12.5px; line-height:1.55; color:#222; display:flex; align-items:center; }
+  .badge {
+    display:inline-block; font-size:10px; padding:2px 7px;
+    border-radius:2px; font-family:'DM Mono',monospace; letter-spacing:.04em;
+    white-space:nowrap;
+  }
+  .badge-improve { background:#e6f4ea; color:#2d7a3a; border:1px solid #a8d5b0; }
+  .badge-security { background:#fff3e0; color:#a04000; border:1px solid #f0b070; }
+  .badge-failure { background:#fce8e8; color:#a00; border:1px solid #e8a0a0; }
+  .badge-none { background:#f5f5f5; color:#aaa; border:1px solid #ddd; }
+
+  /* ── AI NEWS CARDS ── */
+  .ai-news-grid { display:flex; flex-direction:column; gap:14px; }
+  .ai-card {
+    background:#fff; border:1px solid var(--rule); border-radius:2px;
+    padding:18px 20px; border-left:4px solid var(--ink);
+    transition: border-left-color .2s, transform .15s;
+  }
+  .ai-card:hover { border-left-color:var(--accent); transform:translateX(2px); }
+  .ai-card-title {
+    font-family:'Noto Serif KR',serif; font-size:14.5px; font-weight:700;
+    line-height:1.4; margin-bottom:12px; color:var(--ink);
+  }
+  .ai-card-bullets { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+  .ai-card-bullet { font-size:12.5px; line-height:1.6; color:#333; padding-left:4px; }
+  .ai-card-source {
+    font-family:'DM Mono',monospace; font-size:10px; letter-spacing:.08em;
+    color:var(--muted); border-top:1px solid var(--rule); padding-top:9px;
+    display:flex; align-items:center; gap:6px;
+  }
+  .ai-card-source::before { content:'from.'; color:var(--accent); font-weight:500; }
+
+  /* ── ORNAMENT ── */
+  .ornament-rule { display:flex; align-items:center; gap:10px; }
+  .ornament-rule::before, .ornament-rule::after {
+    content:''; flex:1; height:1px; background:var(--rule);
+  }
+  .ornament-rule span { font-family:'DM Mono',monospace; font-size:10px; color:var(--rule); }
+
+  /* ── FOOTER ── */
+  .footer {
+    background:var(--ink); padding:18px 44px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .footer-brand { font-family:'Noto Serif KR',serif; font-size:14px; color:#888; }
+  .footer-brand strong { color:var(--paper); }
+  .footer-note { font-family:'DM Mono',monospace; font-size:9px; color:#555; letter-spacing:.1em; text-transform:uppercase; }
+  .refresh-btn {
+    background:transparent; border:1px solid #444; color:#888;
+    font-family:'DM Mono',monospace; font-size:9px; letter-spacing:.1em;
+    padding:5px 12px; cursor:pointer; text-transform:uppercase; transition:all .2s;
+  }
+  .refresh-btn:hover { border-color:#888; color:var(--paper); }
+
+  /* ── GENERATING STATE ── */
+  .generating-notice {
+    background:var(--accent); color:#fff;
+    font-family:'DM Mono',monospace; font-size:11px; letter-spacing:.08em;
+    padding:12px 44px; text-align:center; display:none;
+  }
+
+  @media(max-width:620px){
+    .masthead { padding:20px 20px 16px; }
+    .body-wrap { padding:24px 20px; }
+    .date-strip, .keyword-bar, .footer { padding-left:20px; padding-right:20px; }
+    .telco-grid { grid-template-columns:64px 1fr 1fr 1fr; }
+    .tg-cell { font-size:11px; padding:8px 7px; }
+    .qt-head, .qt-row { grid-template-columns:80px 90px 1fr; }
+    .footer { flex-direction:column; gap:10px; text-align:center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOADING STATE -->
+<div id="loading">
+  <div class="spinner"></div>
+  <p>브리핑 불러오는 중...</p>
+</div>
+
+<!-- NEWSPAPER (hidden until data loaded) -->
+<article class="newspaper" id="newspaper">
+
+  <div class="generating-notice" id="generatingNotice">
+    ⏳ 오늘의 AI 브리핑을 생성 중입니다. 잠시 후 자동으로 새로고침됩니다…
+  </div>
+
+  <header class="masthead">
+    <div class="masthead-meta">
+      <span>사내 AI 뉴스 브리핑</span>
+      <span class="edition-tag">DAILY EDITION</span>
+    </div>
+    <h1 class="masthead-title">통신·IT <span>AI</span> 브리핑</h1>
+    <p class="masthead-sub">Telecom &amp; Tech Intelligence · Powered by Claude AI</p>
+  </header>
+
+  <div class="date-strip">
+    <span class="today" id="dateDisplay">—</span>
+    <span id="generatedAt">—</span>
+  </div>
+
+  <div class="keyword-bar" id="keywordBar">
+    <span class="kw-label">Today</span>
+  </div>
+
+  <div class="body-wrap">
+
+    <!-- 01 통신 -->
+    <section>
+      <div class="section-header">
+        <span class="section-num">01</span>
+        <h2 class="section-title">통신업계 주요 동향</h2>
+      </div>
+      <div class="telco-grid" id="telcoGrid">
+        <div class="tg-head">구분</div>
+        <div class="tg-head lgu">LG유플러스</div>
+        <div class="tg-head kt">KT</div>
+        <div class="tg-head skt">SKT</div>
+      </div>
+    </section>
+
+    <div class="ornament-rule"><span>◆</span></div>
+
+    <!-- 02 뉴스 요약 -->
+    <section>
+      <div class="section-header">
+        <span class="section-num">02</span>
+        <h2 class="section-title">오늘 뉴스 흐름 요약</h2>
+      </div>
+      <div class="news-flow" id="summaryList"></div>
+    </section>
+
+    <div class="ornament-rule"><span>◆</span></div>
+
+    <!-- 03 기업 동향 -->
+    <section>
+      <div class="section-header">
+        <span class="section-num">03</span>
+        <h2 class="section-title">주요 기업 동향</h2>
+      </div>
+      <div class="company-table" id="companyTable"></div>
+    </section>
+
+    <div class="ornament-rule"><span>◆</span></div>
+
+    <!-- 04 품질 사고 -->
+    <section>
+      <div class="section-header">
+        <span class="section-num">04</span>
+        <h2 class="section-title">품질 사고 및 개선 사례</h2>
+      </div>
+      <div class="quality-table">
+        <div class="qt-head">
+          <div class="qt-cell">유형</div>
+          <div class="qt-cell">기업/기관</div>
+          <div class="qt-cell">내용 요약</div>
+        </div>
+        <div id="qualityRows"></div>
+      </div>
+    </section>
+
+    <div class="ornament-rule"><span>◆</span></div>
+
+    <!-- 05 AI 뉴스 -->
+    <section>
+      <div class="section-header">
+        <span class="section-num">05</span>
+        <h2 class="section-title">✨ AI Daily – 지금 주목해야 할 뉴스</h2>
+      </div>
+      <div class="ai-news-grid" id="aiNewsGrid"></div>
+    </section>
+
+  </div><!-- /body-wrap -->
+
+  <footer class="footer">
+    <div class="footer-brand"><strong>AI 뉴스 브리핑</strong> · 사내 자동화 배포</div>
+    <button class="refresh-btn" onclick="loadBriefing()">↺ 새로고침</button>
+    <div class="footer-note">Generated by Claude AI · Daily 09:00 KST</div>
+  </footer>
+
+</article>
+
+<script>
+// ── 배지 스타일 매핑
+const badgeMap = {
+  '품질개선': 'badge-improve',
+  '보안사고': 'badge-security',
+  '장애사고': 'badge-failure',
+  '해당없음': 'badge-none',
+};
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderTelco(telco) {
+  const grid = document.getElementById('telcoGrid');
+  const rows = ['품질','AI','신사업'];
+  rows.forEach(row => {
+    const label = document.createElement('div');
+    label.className = 'tg-cell tg-label';
+    label.innerHTML = row === 'AI'
+      ? `${row} <span class="tag-ai">AI</span>`
+      : row;
+    grid.appendChild(label);
+
+    ['LGU','KT','SKT'].forEach(co => {
+      const cell = document.createElement('div');
+      cell.className = 'tg-cell';
+      const val = telco[co]?.[row] || '정보 없음';
+      cell.innerHTML = val === '관련 동향 없음' || val === '정보 없음'
+        ? `<span class="none-text">${escHtml(val)}</span>`
+        : escHtml(val);
+      grid.appendChild(cell);
+    });
+  });
+}
+
+function renderSummary(summary) {
+  const list = document.getElementById('summaryList');
+  summary.forEach(text => {
+    list.innerHTML += `
+      <div class="news-item">
+        <div class="news-bullet"></div>
+        <p class="news-text">${escHtml(text)}</p>
+      </div>`;
+  });
+}
+
+function renderCompanies(companies) {
+  const tbl = document.getElementById('companyTable');
+  companies.forEach((c, i) => {
+    const isLast = i === companies.length - 1;
+    const cls = isLast ? 'ct-row market-row' : 'ct-row';
+    tbl.innerHTML += `
+      <div class="${cls}">
+        <div class="ct-name">${escHtml(c.name)}</div>
+        <div class="ct-body">${escHtml(c.one_line)}</div>
+      </div>`;
+  });
+}
+
+function renderQuality(quality) {
+  const wrap = document.getElementById('qualityRows');
+  quality.forEach(q => {
+    const badgeCls = badgeMap[q.type] || 'badge-none';
+    wrap.innerHTML += `
+      <div class="qt-row">
+        <div class="qt-type"><span class="badge ${badgeCls}">${escHtml(q.type)}</span></div>
+        <div class="qt-company">${escHtml(q.company)}</div>
+        <div class="qt-desc">${escHtml(q.desc)}</div>
+      </div>`;
+  });
+}
+
+function renderAiNews(news) {
+  const grid = document.getElementById('aiNewsGrid');
+  news.forEach(item => {
+    const bullets = (item.bullets || [])
+      .map(b => `<div class="ai-card-bullet">${escHtml(b)}</div>`)
+      .join('');
+    grid.innerHTML += `
+      <div class="ai-card">
+        <div class="ai-card-title">${escHtml(item.title)}</div>
+        <div class="ai-card-bullets">${bullets}</div>
+        <div class="ai-card-source">${escHtml(item.source)}</div>
+      </div>`;
+  });
+}
+
+function renderKeywords(keywords) {
+  const bar = document.getElementById('keywordBar');
+  keywords.forEach(kw => {
+    const span = document.createElement('span');
+    span.className = 'kw-tag';
+    span.textContent = kw;
+    bar.appendChild(span);
+  });
+}
+
+async function loadBriefing() {
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('newspaper').classList.remove('visible');
+
+  const resp = await fetch('/api/briefing');
+
+  if (resp.status === 202) {
+    // 생성 중
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('newspaper').classList.add('visible');
+    document.getElementById('generatingNotice').style.display = 'block';
+    setTimeout(loadBriefing, 8000);
+    return;
+  }
+
+  const data = await resp.json();
+
+  // 날짜
+  document.getElementById('dateDisplay').textContent = data.date || '';
+  const gat = data.generated_at
+    ? new Date(data.generated_at).toLocaleString('ko-KR', {hour:'2-digit', minute:'2-digit'}) + ' 기준'
+    : '';
+  document.getElementById('generatedAt').textContent = gat;
+
+  // 각 섹션 렌더
+  renderKeywords(data.keywords || []);
+  renderTelco(data.telco || {});
+  renderSummary(data.summary || []);
+  renderCompanies(data.companies || []);
+  renderQuality(data.quality || []);
+  renderAiNews(data.ai_news || []);
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('newspaper').classList.add('visible');
+}
+
+loadBriefing();
+</script>
+</body>
+</html>

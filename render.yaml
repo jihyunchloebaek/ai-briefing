@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: ai-news-briefing
+    env: python
+    region: singapore   # 한국과 가장 가까운 리전
+    plan: free          # 무료 플랜 (필요 시 starter로 변경)
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false     # Render 대시보드에서 직접 입력
+    healthCheckPath: /health
