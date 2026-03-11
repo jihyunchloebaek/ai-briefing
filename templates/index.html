@@ -278,9 +278,7 @@ body {
 
 <div class="report" id="report">
 
-  <div class="gen-notice" id="genNotice">
-    ⏳ 오늘의 AI 브리핑을 생성 중입니다. 잠시 후 자동으로 새로고침됩니다…
-  </div>
+
 
   <!-- HEADER -->
   <div class="header">
@@ -498,7 +496,6 @@ async function loadBriefing() {
     if (resp.status === 202) {
       document.getElementById('loading').style.display = 'none';
       document.getElementById('report').classList.add('visible');
-      document.getElementById('genNotice').style.display = 'block';
       setTimeout(loadBriefing, 8000);
       return;
     }
