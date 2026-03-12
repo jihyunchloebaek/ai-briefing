@@ -154,10 +154,10 @@ async def generate_briefing() -> dict:
 반드시 유효한 JSON만 출력하고 다른 텍스트는 절대 포함하지 마세요.
 마크다운 코드블록(```json)도 사용하지 마세요."""
 
-    USER = f"""오늘({today_str} {weekday}요일) 오전 9시 기준, 최근 24시간 이내 발행된 뉴스만 웹 검색으로 수집·요약해주세요. 24시간 이내 기사가 없는 항목은 "관련 동향 없음"으로 표시하세요.
+    USER = f"""오늘({today_str} {weekday}요일) 오전 9시 기준, 최근 48시간 이내 발행된 뉴스만 웹 검색으로 수집·요약해주세요. 48시간 이내 기사가 없는 항목은 "관련 동향 없음"으로 표시하세요.
 
 수집 영역:
-1. 통신 3사 (LG유플러스, KT, SKT) – 품질/AI/신사업
+1. 통신 3사 (LG유플러스, KT, SKT) – 품질/AI/신사업/마케팅/제휴/파트너십
 2. 국내외 주요 기업 동향 – SKT, KT, LG유플러스는 제외
    국내: 네이버, 카카오, 카카오페이, 토스, 배달의민족, 당근, 쿠팡, 삼성전자, LG전자, 현대차, 기아, 롯데, 신세계, 라인
    해외: 구글, 메타, 애플, 마이크로소프트, 엔비디아, OpenAI, Anthropic
@@ -260,14 +260,19 @@ async def lifespan(app: FastAPI):
         except Exception:
             pass
 
-    # 스케줄러: 매일 오전 9시 브리핑 (KST)
-    scheduler.add_job(scheduled_task, CronTrigger(hour=9, minute=0, timezone="Asia/Seoul"))
+    # 스케줄러: 격일 오전 9시 브리핑 (KST) - 48시간마다
+    # BRIEFING_ENABLED=true 일 때만 스케줄러 동작
+    if os.environ.get("BRIEFING_ENABLED", "false").lower() == "true":
+        scheduler.add_job(scheduled_task, CronTrigger(hour=9, minute=0, day="*/2", timezone="Asia/Seoul"))
+        print("브리핑 스케줄러 활성화 ✅")
+    else:
+        print("브리핑 스케줄러 비활성화 (BRIEFING_ENABLED=false) ⏸")
     # 스케줄러: 30분마다 장애 모니터링
     scheduler.add_job(monitor_task, "interval", minutes=30)
     scheduler.start()
 
-    # 캐시가 없으면 즉시 한 번 생성
-    if cache["briefing"] is None:
+    # 캐시가 없고 BRIEFING_ENABLED=true 일 때만 즉시 생성
+    if cache["briefing"] is None and os.environ.get("BRIEFING_ENABLED", "false").lower() == "true":
         asyncio.create_task(scheduled_task())
     # 모니터링 즉시 한 번 실행
     asyncio.create_task(monitor_task())
