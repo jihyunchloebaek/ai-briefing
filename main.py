@@ -158,7 +158,7 @@ async def generate_briefing() -> dict:
 
 수집 영역:
 1. 통신 3사 (LG유플러스, KT, SKT) – 품질/AI/신사업/마케팅/제휴/파트너십
-2. 국내외 주요 기업 동향 – SKT, KT, LG유플러스는 제외
+2. 국내외 주요 기업 동향
    국내: 네이버, 카카오, 카카오페이, 토스, 배달의민족, 당근, 쿠팡, 삼성전자, LG전자, 현대차, 기아, 롯데, 신세계, 라인
    해외: 구글, 메타, 애플, 마이크로소프트, 엔비디아, OpenAI, Anthropic
 3. 국내외 AI 산업 전반 – 아래 출처 우선 참고:
@@ -201,7 +201,7 @@ async def generate_briefing() -> dict:
 }}
 
 ai_news 5~8건, companies·telco의 url은 실제 기사 URL로 채우고 없으면 빈 문자열.
-companies는 네이버, 카카오, 카카오페이, 토스, 배달의민족, 당근, 쿠팡, 삼성전자, LG전자, 현대차, 기아, 롯데, 신세계, 라인, 구글, 메타, 애플, 마이크로소프트, 엔비디아, OpenAI, Anthropic 중 오늘 뉴스에 등장한 기업만 포함 (SKT, KT, LG유플러스는 제외). 없으면 빈 배열.
+companies는 네이버, 카카오, 카카오페이, 토스, 배달의민족, 당근, 쿠팡, 삼성전자, LG전자, 현대차, 기아, 롯데, 신세계, 라인, 구글, 메타, 애플, 마이크로소프트, 엔비디아, OpenAI, Anthropic 중 오늘 뉴스에 등장한 기업만 포함. 없으면 빈 배열.
 quality 사례 없으면 type을 "해당없음"으로. 동향 없으면 "관련 동향 없음"."""
 
     raw = await call_claude(SYSTEM, USER)
