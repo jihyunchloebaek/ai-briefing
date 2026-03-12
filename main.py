@@ -25,10 +25,92 @@ cache: dict = {
 }
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+NAVER_CLIENT_ID = os.environ.get("NAVER_CLIENT_ID", "")
+NAVER_CLIENT_SECRET = os.environ.get("NAVER_CLIENT_SECRET", "")
 CACHE_FILE = Path("briefing_cache.json")
 
+# ── 장애 모니터링 캐시 ────────────────────────────────────────────────
+monitor_cache: dict = {
+    "results": None,
+    "checked_at": None,
+}
 
-# ── Claude API 호출 (웹서치 포함) ────────────────────────────────────
+SERVICES = [
+    {"id": "skt",       "name": "SKT",       "emoji": "🔷", "keywords": ["SKT 장애", "SKT 불통", "SKT 안됨", "SKT 오류"]},
+    {"id": "kt",        "name": "KT",        "emoji": "🔴", "keywords": ["KT 장애", "KT 불통", "KT 인터넷 안됨", "KT 오류"]},
+    {"id": "lgu",       "name": "LGU+",      "emoji": "💜", "keywords": ["LGU+ 장애", "LG유플러스 장애", "유플러스 불통", "유플러스 안됨"]},
+    {"id": "netflix",   "name": "넷플릭스",   "emoji": "🎬", "keywords": ["넷플릭스 장애", "넷플릭스 안됨", "넷플릭스 오류"]},
+    {"id": "wavve",     "name": "웨이브",     "emoji": "🌊", "keywords": ["웨이브 장애", "웨이브 안됨", "wavve 오류"]},
+    {"id": "tving",     "name": "티빙",       "emoji": "📺", "keywords": ["티빙 장애", "티빙 안됨", "tving 오류"]},
+    {"id": "naver",     "name": "네이버",     "emoji": "🟢", "keywords": ["네이버 장애", "네이버 안됨", "네이버 오류"]},
+    {"id": "kakao",     "name": "카카오",     "emoji": "🟡", "keywords": ["카카오 장애", "카카오톡 불통", "카카오 안됨"]},
+]
+
+
+# ── 네이버 뉴스 검색으로 장애 감지 ──────────────────────────────────
+async def check_service(service: dict) -> dict:
+    """네이버 뉴스 API로 장애 키워드 검색"""
+    headers = {
+        "X-Naver-Client-Id": NAVER_CLIENT_ID,
+        "X-Naver-Client-Secret": NAVER_CLIENT_SECRET,
+    }
+    articles = []
+    is_down = False
+
+    for keyword in service["keywords"][:2]:  # 키워드 2개만 검색 (API 절약)
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(
+                    "https://openapi.naver.com/v1/search/news.json",
+                    headers=headers,
+                    params={"query": keyword, "display": 3, "sort": "date"},
+                )
+                if resp.is_success:
+                    data = resp.json()
+                    items = data.get("items", [])
+                    for item in items:
+                        # 1시간 이내 기사만 체크
+                        pub_date = item.get("pubDate", "")
+                        try:
+                            from email.utils import parsedate_to_datetime
+                            pub_dt = parsedate_to_datetime(pub_date)
+                            age_minutes = (datetime.now(pub_dt.tzinfo) - pub_dt).total_seconds() / 60
+                            if age_minutes <= 60:
+                                is_down = True
+                                articles.append({
+                                    "title": item.get("title", "").replace("<b>","").replace("</b>",""),
+                                    "link": item.get("link", ""),
+                                    "pubDate": pub_date,
+                                })
+                        except Exception:
+                            pass
+        except Exception as e:
+            print(f"네이버 API 오류 ({keyword}): {e}")
+
+    return {
+        "id": service["id"],
+        "name": service["name"],
+        "emoji": service["emoji"],
+        "status": "down" if is_down else "normal",
+        "articles": articles[:3],
+    }
+
+
+async def monitor_task():
+    """전체 서비스 장애 체크"""
+    print(f"[{now_kst()}] 장애 모니터링 시작...")
+    results = []
+    for service in SERVICES:
+        result = await check_service(service)
+        results.append(result)
+
+    monitor_cache["results"] = results
+    monitor_cache["checked_at"] = now_kst().isoformat()
+    down_list = [r["name"] for r in results if r["status"] == "down"]
+    print(f"[{now_kst()}] 장애 모니터링 완료 ✅ 이상 감지: {down_list if down_list else '없음'}")
+
+
+
 async def call_claude(system: str, user: str) -> str:
     """Claude claude-sonnet-4-20250514 에 웹서치 도구와 함께 요청을 보내고 텍스트 응답을 반환."""
     headers = {
@@ -72,12 +154,16 @@ async def generate_briefing() -> dict:
 반드시 유효한 JSON만 출력하고 다른 텍스트는 절대 포함하지 마세요.
 마크다운 코드블록(```json)도 사용하지 마세요."""
 
-    USER = f"""오늘({today_str} {weekday}요일) 기준으로 아래 영역의 최신 뉴스를 웹 검색으로 수집·요약해주세요.
+    USER = f"""오늘({today_str} {weekday}요일) 오전 9시 기준, 최근 24시간 이내 발행된 뉴스만 웹 검색으로 수집·요약해주세요. 24시간 이내 기사가 없는 항목은 "관련 동향 없음"으로 표시하세요.
 
 수집 영역:
 1. 통신 3사 (LG유플러스, KT, SKT) – 품질/AI/신사업
-2. 국내 IT 기업 (네이버, 카카오, 당근, 쿠팡 등)
-3. 국내외 AI 산업 전반 (에이전틱 AI, LLM, 정책 등)
+2. 국내외 주요 기업 동향 – SKT, KT, LG유플러스는 제외
+   국내: 네이버, 카카오, 카카오페이, 토스, 배달의민족, 당근, 쿠팡, 삼성전자, LG전자, 현대차, 기아, 롯데, 신세계, 라인
+   해외: 구글, 메타, 애플, 마이크로소프트, 엔비디아, OpenAI, Anthropic
+3. 국내외 AI 산업 전반 – 아래 출처 우선 참고:
+   TechCrunch, AI Business Daily, CB Insights, MIT Technology Review, The Miilk, 인공지능신문
+   업계 동향뿐 아니라 AI 기술 발전, 흥미로운 연구·사례도 포함
 4. 해외 빅테크 동향 (Google, Microsoft, OpenAI, Meta, Apple 등)
 
 출력 스키마 (JSON):
@@ -115,6 +201,7 @@ async def generate_briefing() -> dict:
 }}
 
 ai_news 5~8건, companies·telco의 url은 실제 기사 URL로 채우고 없으면 빈 문자열.
+companies는 네이버, 카카오, 카카오페이, 토스, 배달의민족, 당근, 쿠팡, 삼성전자, LG전자, 현대차, 기아, 롯데, 신세계, 라인, 구글, 메타, 애플, 마이크로소프트, 엔비디아, OpenAI, Anthropic 중 오늘 뉴스에 등장한 기업만 포함 (SKT, KT, LG유플러스는 제외). 없으면 빈 배열.
 quality 사례 없으면 type을 "해당없음"으로. 동향 없으면 "관련 동향 없음"."""
 
     raw = await call_claude(SYSTEM, USER)
@@ -173,13 +260,17 @@ async def lifespan(app: FastAPI):
         except Exception:
             pass
 
-    # 스케줄러: 매일 오전 9시 (KST)
+    # 스케줄러: 매일 오전 9시 브리핑 (KST)
     scheduler.add_job(scheduled_task, CronTrigger(hour=9, minute=0, timezone="Asia/Seoul"))
+    # 스케줄러: 30분마다 장애 모니터링
+    scheduler.add_job(monitor_task, "interval", minutes=30)
     scheduler.start()
 
     # 캐시가 없으면 즉시 한 번 생성
     if cache["briefing"] is None:
         asyncio.create_task(scheduled_task())
+    # 모니터링 즉시 한 번 실행
+    asyncio.create_task(monitor_task())
 
     yield
     scheduler.shutdown()
@@ -209,6 +300,20 @@ async def refresh_briefing(background_tasks: BackgroundTasks):
     return {"message": "브리핑 갱신을 시작했습니다."}
 
 
+@app.get("/monitor", response_class=HTMLResponse)
+async def monitor():
+    html = Path("templates/monitor.html").read_text(encoding="utf-8")
+    return HTMLResponse(html)
+
+
+@app.get("/api/monitor")
+async def get_monitor():
+    if monitor_cache["results"] is None:
+        return JSONResponse({"status": "checking"}, status_code=202)
+    return JSONResponse(monitor_cache)
+
+
 @app.get("/health")
+@app.head("/health")
 async def health():
     return {"status": "ok", "cached": cache["briefing"] is not None}
