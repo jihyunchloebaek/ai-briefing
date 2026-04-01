@@ -284,15 +284,16 @@ body {
   <div class="header">
     <div class="header-eyebrow">LG유플러스 품질혁신센터</div>
     <h1 class="header-title">AI Daily <span>News</span></h1>
-    <div class="header-sub">
+  <div class="header-sub">
       <div>
         <div class="date-text" id="dateDisplay">—</div>
         <div class="time-text" id="generatedAt">—</div>
       </div>
       <button class="refresh-btn" onclick="loadBriefing()">↺ 새로고침</button>
-    </div>
-    <div class="keywords" id="keywordBar"></div>
   </div>
+  <div class="keywords" id="keywordBar"></div>
+  <div class="gen-notice" id="genNotice"></div>
+</div>
 
   <!-- 01 통신업계 -->
   <div class="card">
@@ -490,10 +491,17 @@ function renderKeywords(keywords) {
 async function loadBriefing() {
   document.getElementById('loading').style.display = 'flex';
   document.getElementById('report').classList.remove('visible');
+  document.getElementById('genNotice').style.display = 'none';
 
   try {
     const resp = await fetch('/api/briefing');
     if (resp.status === 202) {
+      const payload = await resp.json();
+      const notice = document.getElementById('genNotice');
+      notice.textContent = payload.last_error
+        ? `브리핑 생성이 지연되고 있어요. 최근 오류: ${payload.last_error}`
+        : (payload.message || '브리핑 생성 중입니다. 잠시 후 자동으로 다시 시도합니다.');
+      notice.style.display = 'block';
       document.getElementById('loading').style.display = 'none';
       document.getElementById('report').classList.add('visible');
       setTimeout(loadBriefing, 8000);
