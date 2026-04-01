@@ -64,7 +64,7 @@ async def generate_briefing() -> dict:
     today_str = now.strftime("%Y년 %m월 %d일")
     weekday = ["월", "화", "수", "목", "금", "토", "일"][now.weekday()]
 
-```python
+
 SYSTEM = """당신은 국내 통신·IT 업계 전문 뉴스 큐레이터입니다.
 반드시 웹 검색을 사용해 최신 뉴스만 수집하고, 아래 JSON 스키마에 맞춰 **유효한 JSON 객체만** 출력하세요.
 다른 텍스트, 설명, 마크다운 코드블록(```json) 출력은 금지합니다."""
