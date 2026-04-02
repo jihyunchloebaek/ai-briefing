@@ -74,11 +74,11 @@ async def generate_briefing() -> dict:
     USER = f"""오늘({today_str} {weekday}요일) 기준 최근 7일 이내의 뉴스만 수집·요약하세요.
 
 [중요 규칙]
-1) 날짜 필터(필수)
-- 기사 발행일이 {today_str} 기준 **D-6 ~ D-day** 범위에 있는 기사만 사용.
-- 범위 밖(8일 이상 과거) 기사는 절대 포함하지 않음.
-- 발행일을 확인할 수 없는 기사는 제외.
+1) 날짜 필터(권장)
+- 기사 발행일이 {today_str} 기준 최근 14일 이내 기사를 우선 사용.
+- 발행일이 불명확해도 최근 기사로 판단되면 포함해도 됨.
 - 같은 이슈를 반복 인용하지 말고, 가능한 한 서로 다른 기사/출처를 사용.
+- 날짜 때문에 기사를 배제하기보다, 최대한 다양한 최신 기사를 수집하는 것이 우선.
 
 2) 섹션 분리(필수)
 - telco 섹션은 통신 3사(LGU+, KT, SKT) 전용.
@@ -137,7 +137,9 @@ async def generate_briefing() -> dict:
 - quality 사례가 없으면 [{{"type":"해당없음","company":"","desc":"관련 동향 없음"}}]로 반환.
 - 해당 섹션에 뉴스가 부족하면 "관련 동향 없음"으로 명시.
 
-최종 출력은 JSON 객체 하나만 반환."""
+최종 출력은 JSON 객체 하나만 반환.
+뉴스가 부족하거나 없더라도 절대 거부하지 말고, 해당 필드를 "관련 동향 없음" 또는 빈 문자열("")로 채워서 반드시 JSON만 반환하세요.
+설명 텍스트, 사과 문구, 마크다운은 절대 출력 금지."""
 
     try:
         raw = await asyncio.wait_for(call_claude(SYSTEM, USER), timeout=100)
@@ -151,7 +153,10 @@ async def generate_briefing() -> dict:
         end = raw.rindex("}") + 1
         clean = raw[start:end]
         return json.loads(clean)
-    except (ValueError, json.JSONDecodeError) as e:
+    except ValueError:
+        print(f"JSON 블록 없음 - 원문:\n{raw[:800]}")
+        raise RuntimeError("Claude가 JSON을 반환하지 않았습니다.")
+    except json.JSONDecodeError as e:
         print(f"JSON 파싱 실패: {e}\n원문: {raw[:500]}")
         raise
 
