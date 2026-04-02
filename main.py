@@ -36,7 +36,7 @@ async def call_claude(system: str, user: str) -> str:
     }
     payload = {
         "model": "claude-haiku-4-5-20251001",
-        "max_tokens": 8000,
+        "max_tokens": 12000,
         "system": system,
         "tools": [{"type": "web_search_20250305", "name": "web_search"}],
         "messages": [{"role": "user", "content": user}],
@@ -131,8 +131,8 @@ async def generate_briefing() -> dict:
 }}
 
 출력 규칙(강제):
-- ai_news는 5~8건.
-- companies는 4~8개 기업, **통신3사(LGU+/KT/SKT) 제외**.
+- ai_news는 3~5건.
+- companies는 3~5개 기업, **통신3사(LGU+/KT/SKT) 제외**.
 - companies·telco의 모든 *_url/url은 실제 기사 URL만 입력, 없으면 "".
 - quality 사례가 없으면 [{{"type":"해당없음","company":"","desc":"관련 동향 없음"}}]로 반환.
 - 해당 섹션에 뉴스가 부족하면 "관련 동향 없음"으로 명시.
@@ -145,11 +145,13 @@ async def generate_briefing() -> dict:
         print("❌ Claude API 타임아웃 (100초 초과)")
         raise
 
-    # JSON 파싱 (혹시 모를 코드펜스 제거)
+    # JSON 파싱: 응답 어디서든 { ... } 블록 추출
     try:
-        clean = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        start = raw.index("{")
+        end = raw.rindex("}") + 1
+        clean = raw[start:end]
         return json.loads(clean)
-    except json.JSONDecodeError as e:
+    except (ValueError, json.JSONDecodeError) as e:
         print(f"JSON 파싱 실패: {e}\n원문: {raw[:500]}")
         raise
 
