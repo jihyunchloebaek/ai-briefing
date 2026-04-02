@@ -41,7 +41,10 @@ async def call_claude(system: str, user: str) -> str:
         "tools": [{"type": "web_search_20250305", "name": "web_search"}],
         "messages": [{"role": "user", "content": user}],
     }
-    async with httpx.AsyncClient(timeout=120) as client:
+    print("Claude API 호출 중...")
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(connect=15, read=90, write=15, pool=5)
+    ) as client:
         resp = await client.post(
             "https://api.anthropic.com/v1/messages",
             headers=headers,
@@ -136,11 +139,14 @@ async def generate_briefing() -> dict:
 
 최종 출력은 JSON 객체 하나만 반환."""
 
-    raw = await call_claude(SYSTEM, USER)
-
-    # JSON 파싱
     try:
-        # 혹시 모를 코드펜스 제거 후 파싱
+        raw = await asyncio.wait_for(call_claude(SYSTEM, USER), timeout=100)
+    except asyncio.TimeoutError:
+        print("❌ Claude API 타임아웃 (100초 초과)")
+        raise
+
+    # JSON 파싱 (혹시 모를 코드펜스 제거)
+    try:
         clean = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         return json.loads(clean)
     except json.JSONDecodeError as e:
@@ -158,7 +164,7 @@ async def scheduled_task():
         CACHE_FILE.write_text(json.dumps(briefing, ensure_ascii=False, indent=2))
         print(f"[{now_kst()}] 브리핑 생성 완료 ✅")
     except Exception as e:
-        print(f"[{datetime.now()}] 브리핑 생성 실패 ❌: {e}")
+        print(f"[{now_kst()}] 브리핑 생성 실패 ❌: {e}")
 
 
 # ── 앱 시작/종료 ──────────────────────────────────────────────────────
@@ -193,6 +199,7 @@ app = FastAPI(title="AI 뉴스 브리핑", lifespan=lifespan)
 
 # ── 라우트 ────────────────────────────────────────────────────────────
 @app.get("/", response_class=HTMLResponse)
+@app.head("/")
 async def index():
     html = Path("templates/index.html").read_text(encoding="utf-8")
     return HTMLResponse(html)
