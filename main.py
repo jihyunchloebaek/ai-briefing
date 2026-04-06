@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import asyncio
 from datetime import datetime, date
@@ -122,6 +123,8 @@ async def call_claude(system: str, user: str) -> str:
 
     texts = [blk["text"] for blk in data.get("content", []) if blk.get("type") == "text"]
     result = "\n".join(texts).strip()
+    # <cite ...> 태그 제거 (내용은 유지)
+    result = re.sub(r'<cite[^>]*>(.*?)</cite>', r'\1', result, flags=re.DOTALL)
     print(f"API 응답 미리보기: {result[:200]}")
     return result
 
@@ -134,7 +137,8 @@ async def generate_briefing() -> dict:
 
     SYSTEM = """당신은 국내 통신·IT 업계 전문 뉴스 큐레이터입니다.
 반드시 웹 검색을 사용해 최신 뉴스만 수집하고, 아래 JSON 스키마에 맞춰 **유효한 JSON 객체만** 출력하세요.
-다른 텍스트, 설명, 마크다운 코드블록(```json) 출력은 금지합니다."""
+다른 텍스트, 설명, 마크다운 코드블록(```json) 출력은 금지합니다.
+<cite> 태그, XML 태그, HTML 태그를 절대 사용하지 마세요. 순수 텍스트와 JSON만 출력하세요."""
 
     USER = f"""오늘({today_str} {weekday}요일) 기준 최근 7일 이내의 뉴스만 수집·요약하세요.
 
