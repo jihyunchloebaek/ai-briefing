@@ -30,18 +30,16 @@ NAVER_CLIENT_ID = os.environ.get("NAVER_CLIENT_ID", "")
 NAVER_CLIENT_SECRET = os.environ.get("NAVER_CLIENT_SECRET", "")
 CACHE_FILE = Path("briefing_cache.json")
 
-
-
 # ── 장애 모니터 ──────────────────────────────────────────────────────
 SERVICES = [
-    {"id": "skt",     "name": "SKT",     "emoji": "🔷", "keywords": ["SKT 불통", "SKT 먹통", "SKT 접속 안됨", "SKT 장애 발생"]},
-    {"id": "kt",      "name": "KT",      "emoji": "🔴", "keywords": ["KT 불통", "KT 먹통", "KT 접속 안됨", "KT 장애 발생"]},
-    {"id": "lgu",     "name": "LGU+",    "emoji": "💜", "keywords": ["유플러스 불통", "유플러스 먹통", "유플러스 접속 안됨", "유플러스 장애 발생"]},
-    {"id": "netflix", "name": "넷플릭스", "emoji": "🎬", "keywords": ["넷플릭스 불통", "넷플릭스 먹통", "넷플릭스 접속 안됨"]},
-    {"id": "wavve",   "name": "웨이브",   "emoji": "🌊", "keywords": ["웨이브 불통", "웨이브 먹통", "웨이브 접속 안됨"]},
-    {"id": "tving",   "name": "티빙",     "emoji": "📺", "keywords": ["티빙 불통", "티빙 먹통", "티빙 접속 안됨"]},
-    {"id": "naver",   "name": "네이버",   "emoji": "🟢", "keywords": ["네이버 불통", "네이버 먹통", "네이버 접속 안됨"]},
-    {"id": "kakao",   "name": "카카오",   "emoji": "🟡", "keywords": ["카카오톡 불통", "카카오 먹통", "카카오 접속 안됨"]},
+    {"id": "skt",     "name": "SKT",    "emoji": "🔷", "keywords": ["SKT 불통", "SKT 먹통", "SKT 접속 안됨", "SKT 장애 발생"]},
+    {"id": "kt",      "name": "KT",     "emoji": "🔴", "keywords": ["KT 불통", "KT 먹통", "KT 접속 안됨", "KT 장애 발생"]},
+    {"id": "lgu",     "name": "LGU+",   "emoji": "💜", "keywords": ["유플러스 불통", "유플러스 먹통", "유플러스 접속 안됨", "유플러스 장애 발생"]},
+    {"id": "netflix", "name": "넷플릭스","emoji": "🎬", "keywords": ["넷플릭스 불통", "넷플릭스 먹통", "넷플릭스 접속 안됨"]},
+    {"id": "wavve",   "name": "웨이브",  "emoji": "🌊", "keywords": ["웨이브 불통", "웨이브 먹통", "웨이브 접속 안됨"]},
+    {"id": "tving",   "name": "티빙",   "emoji": "📺", "keywords": ["티빙 불통", "티빙 먹통", "티빙 접속 안됨"]},
+    {"id": "naver",   "name": "네이버", "emoji": "🟢", "keywords": ["네이버 불통", "네이버 먹통", "네이버 접속 안됨"]},
+    {"id": "kakao",   "name": "카카오", "emoji": "🟡", "keywords": ["카카오톡 불통", "카카오 먹통", "카카오 접속 안됨"]},
 ]
 
 monitor_cache: dict = {
@@ -118,9 +116,8 @@ async def call_claude(system: str, user: str) -> str:
         )
         if not resp.is_success:
             print(f"API 오류 상세: {resp.status_code} - {resp.text}")
-        resp.raise_for_status()
-        data = resp.json()
-
+            resp.raise_for_status()
+    data = resp.json()
     texts = [blk["text"] for blk in data.get("content", []) if blk.get("type") == "text"]
     result = "\n".join(texts).strip()
     # <cite ...> 태그 제거 (내용은 유지)
@@ -128,36 +125,37 @@ async def call_claude(system: str, user: str) -> str:
     print(f"API 응답 미리보기: {result[:200]}")
     return result
 
-
 # ── 브리핑 생성 핵심 로직 ────────────────────────────────────────────
 async def generate_briefing() -> dict:
     now = now_kst()
     today_str = now.strftime("%Y년 %m월 %d일")
     weekday = ["월", "화", "수", "목", "금", "토", "일"][now.weekday()]
+    # 날짜 필터에 사용할 14일 전 날짜 계산
+    from datetime import timedelta
+    cutoff_date = (now - timedelta(days=14)).strftime("%Y년 %m월 %d일")
 
     SYSTEM = """당신은 국내 통신·IT 업계 전문 뉴스 큐레이터입니다.
 반드시 웹 검색을 사용해 최신 뉴스만 수집하고, 아래 JSON 스키마에 맞춰 **유효한 JSON 객체만** 출력하세요.
 다른 텍스트, 설명, 마크다운 코드블록(```json) 출력은 금지합니다.
 <cite> 태그, XML 태그, HTML 태그를 절대 사용하지 마세요. 순수 텍스트와 JSON만 출력하세요."""
 
-    USER = f"""오늘({today_str} {weekday}요일) 기준 최근 7일 이내의 뉴스만 수집·요약하세요.
+    USER = f"""오늘은 {today_str} ({weekday}요일)입니다. 아래 규칙을 반드시 지켜 뉴스를 수집·요약하세요.
 
-[중요 규칙]
-1) 날짜 필터(권장)
-- 기사 발행일이 {today_str} 기준 최근 14일 이내 기사를 우선 사용.
-- 발행일이 불명확해도 최근 기사로 판단되면 포함해도 됨.
-- 같은 이슈를 반복 인용하지 말고, 가능한 한 서로 다른 기사/출처를 사용.
-- 날짜 때문에 기사를 배제하기보다, 최대한 다양한 최신 기사를 수집하는 것이 우선.
+[날짜 필터 — 절대 규칙]
+- 기사 발행일이 {cutoff_date} 이전인 기사는 절대 포함하지 마세요.
+- 반드시 {today_str} 기준 최근 14일 이내 기사만 사용하세요.
+- 발행일을 확인할 수 없는 기사는 포함하지 마세요.
+- 오래된 기사가 섞이느니 해당 항목을 "관련 동향 없음"으로 두는 것이 낫습니다.
 
-2) 섹션 분리(필수)
+[섹션 규칙]
 - telco 섹션은 통신 3사(LGU+, KT, SKT) 전용.
-- companies 섹션은 **통신 3사 제외**. (LG유플러스, KT, SKT 이름이 들어가면 안 됨)
+- companies 섹션은 **통신 3사 제외** (LG유플러스, KT, SKT 이름이 들어가면 안 됨).
 - companies는 국내 IT/플랫폼/커머스 + 해외 IT/빅테크 중심으로 구성.
 
-3) 품질 기준
-- URL은 실제 기사 원문 링크(가능하면 언론사/공식 블로그 원문) 사용.
-- url을 채운 항목은 해당 요약이 그 URL 기사와 직접적으로 대응되어야 함.
-- 최근 7일 내 유효 기사 부족 시, 없는 항목은 억지 생성하지 말고 "관련 동향 없음" 또는 ""로 처리.
+[품질 기준]
+- URL은 실제 기사 원문 링크(언론사/공식 블로그 원문) 사용.
+- url을 채운 항목은 해당 요약이 그 URL 기사와 직접 대응되어야 함.
+- 유효 기사가 없는 항목은 억지 생성하지 말고 "관련 동향 없음" 또는 ""로 처리.
 
 수집 영역:
 1. 통신 3사 (LG유플러스, KT, SKT) – 품질/AI/신사업
@@ -229,7 +227,6 @@ async def generate_briefing() -> dict:
         print(f"JSON 파싱 실패: {e}\n원문: {raw[:500]}")
         raise
 
-
 # ── 스케줄 작업 ──────────────────────────────────────────────────────
 async def scheduled_task():
     print(f"[{now_kst()}] 브리핑 생성 시작...")
@@ -242,13 +239,12 @@ async def scheduled_task():
     except Exception as e:
         print(f"[{now_kst()}] 브리핑 생성 실패 ❌: {e}")
 
-
 # ── 앱 시작/종료 ──────────────────────────────────────────────────────
 scheduler = AsyncIOScheduler(timezone="Asia/Seoul")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 파일 캐시 복구
+    # 1) 파일 캐시 복구 시도
     if CACHE_FILE.exists():
         try:
             cache["briefing"] = json.loads(CACHE_FILE.read_text())
@@ -256,14 +252,22 @@ async def lifespan(app: FastAPI):
         except Exception:
             pass
 
-    # BRIEFING_ENABLED=true 일 때만 스케줄러 동작
+    # 2) ✅ 캐시가 없으면 서버 시작 시 즉시 브리핑 생성 (백그라운드)
+    if cache["briefing"] is None:
+        print("캐시 없음 → 브리핑 즉시 생성 시작 (백그라운드)...")
+        asyncio.create_task(scheduled_task())
+
+    # 3) 매주 월요일 09:00 스케줄 등록
     if os.environ.get("BRIEFING_ENABLED", "false").lower() == "true":
-        scheduler.add_job(scheduled_task, CronTrigger(day_of_week="mon", hour=9, minute=0, timezone="Asia/Seoul"))
-        print("브리핑 스케줄러 활성화 ✅ (매주 월요일 오전 9시 - 즉시실행 없음)")
+        scheduler.add_job(
+            scheduled_task,
+            CronTrigger(day_of_week="mon", hour=9, minute=0, timezone="Asia/Seoul")
+        )
+        print("브리핑 스케줄러 활성화 ✅ (매주 월요일 오전 9시)")
     else:
         print("브리핑 스케줄러 비활성화 ⏸ (BRIEFING_ENABLED=false)")
 
-    # 장애 모니터 30분마다 실행 + 시작 시 즉시 1회
+    # 4) 장애 모니터 30분마다 실행 + 시작 시 즉시 1회
     scheduler.add_job(monitor_task, "interval", minutes=30)
     asyncio.create_task(monitor_task())
     print("장애 모니터 스케줄러 활성화 ✅ (30분마다)")
@@ -272,9 +276,7 @@ async def lifespan(app: FastAPI):
     yield
     scheduler.shutdown()
 
-
 app = FastAPI(title="AI 뉴스 브리핑", lifespan=lifespan)
-
 
 # ── 라우트 ────────────────────────────────────────────────────────────
 @app.get("/", response_class=HTMLResponse)
@@ -283,19 +285,19 @@ async def index():
     html = Path("templates/index.html").read_text(encoding="utf-8")
     return HTMLResponse(html)
 
-
 @app.get("/api/briefing")
 async def get_briefing():
     if cache["briefing"] is None:
-        return JSONResponse({"status": "generating", "message": "브리핑 생성 중입니다. 잠시 후 새로고침해주세요."}, status_code=202)
+        return JSONResponse(
+            {"status": "generating", "message": "브리핑 생성 중입니다. 잠시 후 새로고침해주세요."},
+            status_code=202
+        )
     return JSONResponse(cache["briefing"])
-
 
 @app.post("/api/refresh")
 async def refresh_briefing(background_tasks: BackgroundTasks):
     background_tasks.add_task(scheduled_task)
     return {"message": "브리핑 갱신을 시작했습니다."}
-
 
 @app.get("/api/monitor")
 async def get_monitor():
