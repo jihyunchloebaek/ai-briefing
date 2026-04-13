@@ -2,7 +2,7 @@ import os
 import re
 import json
 import asyncio
-from datetime import datetime, date
+from datetime import datetime, timedelta
 from pathlib import Path
 from contextlib import asynccontextmanager
 from zoneinfo import ZoneInfo
@@ -91,7 +91,7 @@ async def monitor_task():
     down = [r["name"] for r in results if r["status"] == "down"]
     print(f"[{now_kst()}] 모니터링 완료 ✅ 이상 감지: {down if down else '없음'}")
 
-# ── Claude API 호출 (웹서치 포함) ────────────────────────────────────
+# ── Claude API 호출 (웹서치 없이 요약 전용) ──────────────────────────
 async def call_claude(system: str, user: str) -> str:
     headers = {
         "x-api-key": ANTHROPIC_API_KEY,
@@ -102,7 +102,7 @@ async def call_claude(system: str, user: str) -> str:
         "model": "claude-haiku-4-5-20251001",
         "max_tokens": 12000,
         "system": system,
-        "tools": [{"type": "web_search_20250305", "name": "web_search"}],
+        # 웹서치 tools 제거 — 네이버 API로 기사를 직접 제공하므로 불필요
         "messages": [{"role": "user", "content": user}],
     }
     print("Claude API 호출 중...")
@@ -120,48 +120,162 @@ async def call_claude(system: str, user: str) -> str:
     data = resp.json()
     texts = [blk["text"] for blk in data.get("content", []) if blk.get("type") == "text"]
     result = "\n".join(texts).strip()
-    # <cite ...> 태그 제거 (내용은 유지)
     result = re.sub(r'<cite[^>]*>(.*?)</cite>', r'\1', result, flags=re.DOTALL)
     print(f"API 응답 미리보기: {result[:200]}")
     return result
+
+# ── 네이버 API로 기사 수집 (날짜 필터 Python 코드로 정확히 처리) ─────
+async def fetch_naver_news(query: str, days: int = 14) -> list[dict]:
+    """
+    네이버 뉴스 API로 키워드 검색 후 days 이내 기사만 반환.
+    날짜 필터는 프롬프트가 아닌 Python 코드로 처리 → 100% 정확.
+    """
+    headers = {
+        "X-Naver-Client-Id": NAVER_CLIENT_ID,
+        "X-Naver-Client-Secret": NAVER_CLIENT_SECRET,
+    }
+    # ★ 핵심: cutoff를 Python datetime으로 계산 → 코드 레벨 날짜 차단
+    cutoff = now_kst() - timedelta(days=days)
+    results = []
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                "https://openapi.naver.com/v1/search/news.json",
+                headers=headers,
+                params={"query": query, "display": 10, "sort": "date"},
+            )
+            if not resp.is_success:
+                print(f"네이버 API 오류 ({query}): {resp.status_code}")
+                return []
+
+            for item in resp.json().get("items", []):
+                try:
+                    pub_dt = parsedate_to_datetime(item.get("pubDate", ""))
+                    # ★ 날짜 비교: cutoff 이전 기사는 여기서 완전 차단
+                    if pub_dt.replace(tzinfo=None) < cutoff.replace(tzinfo=None):
+                        continue
+                    title = item.get("title", "").replace("<b>", "").replace("</b>", "")
+                    desc  = item.get("description", "").replace("<b>", "").replace("</b>", "")
+                    results.append({
+                        "title":   title,
+                        "link":    item.get("originallink") or item.get("link", ""),
+                        "pubDate": item.get("pubDate", ""),
+                        "description": desc,
+                    })
+                except Exception:
+                    continue
+    except Exception as e:
+        print(f"네이버 API 오류 ({query}): {e}")
+
+    print(f"  [{query}] 수집: {len(results)}건 (14일 이내)")
+    return results
+
+
+def format_articles(articles: list[dict]) -> str:
+    """수집된 기사를 Claude 프롬프트용 텍스트로 변환"""
+    if not articles:
+        return "관련 기사 없음"
+    lines = []
+    for a in articles[:5]:
+        lines.append(
+            f"- [{a['pubDate']}] {a['title']}\n"
+            f"  URL: {a['link']}\n"
+            f"  내용: {a['description']}"
+        )
+    return "\n".join(lines)
 
 # ── 브리핑 생성 핵심 로직 ────────────────────────────────────────────
 async def generate_briefing() -> dict:
     now = now_kst()
     today_str = now.strftime("%Y년 %m월 %d일")
     weekday = ["월", "화", "수", "목", "금", "토", "일"][now.weekday()]
-    # 날짜 필터에 사용할 14일 전 날짜 계산
-    from datetime import timedelta
-    cutoff_date = (now - timedelta(days=14)).strftime("%Y년 %m월 %d일")
 
+    # ── Step 1: 네이버 API로 분야별 기사 수집 ──────────────────────
+    print(f"[{now_kst()}] 네이버 API 기사 수집 시작...")
+    queries = {
+        "lgu_품질":  "LG유플러스 품질",
+        "lgu_ai":    "LG유플러스 AI",
+        "lgu_신사업": "LG유플러스 신사업",
+        "kt_품질":   "KT 품질",
+        "kt_ai":     "KT AI",
+        "kt_신사업":  "KT 신사업",
+        "skt_품질":  "SKT 품질",
+        "skt_ai":    "SKT AI",
+        "skt_신사업": "SKT 신사업",
+        "naver_it":  "네이버 IT 서비스",
+        "kakao_it":  "카카오 IT 서비스",
+        "coupang":   "쿠팡 IT",
+        "dangeun":   "당근마켓 서비스",
+        "ai_llm":    "AI 인공지능 LLM 에이전트",
+        "bigtech":   "구글 마이크로소프트 오픈AI 메타 애플",
+    }
+
+    # 순차 수집 (네이버 API 부하 방지)
+    collected = {}
+    for key, query in queries.items():
+        collected[key] = await fetch_naver_news(query)
+
+    print(f"[{now_kst()}] 기사 수집 완료 ✅")
+
+    # ── Step 2: 수집된 기사를 Claude에게 넘겨 요약 요청 ────────────
     SYSTEM = """당신은 국내 통신·IT 업계 전문 뉴스 큐레이터입니다.
-반드시 웹 검색을 사용해 최신 뉴스만 수집하고, 아래 JSON 스키마에 맞춰 **유효한 JSON 객체만** 출력하세요.
+아래에 제공된 기사 데이터만 사용해서 요약하세요.
+제공된 기사에 없는 내용은 절대 만들거나 추측하지 마세요.
+아래 JSON 스키마에 맞춰 유효한 JSON 객체만 출력하세요.
 다른 텍스트, 설명, 마크다운 코드블록(```json) 출력은 금지합니다.
 <cite> 태그, XML 태그, HTML 태그를 절대 사용하지 마세요. 순수 텍스트와 JSON만 출력하세요."""
 
-    USER = f"""오늘은 {today_str} ({weekday}요일)입니다. 아래 규칙을 반드시 지켜 뉴스를 수집·요약하세요.
+    USER = f"""오늘은 {today_str} ({weekday}요일)입니다.
 
-[날짜 필터 — 절대 규칙]
-- 기사 발행일이 {cutoff_date} 이전인 기사는 절대 포함하지 마세요.
-- 반드시 {today_str} 기준 최근 14일 이내 기사만 사용하세요.
-- 발행일을 확인할 수 없는 기사는 포함하지 마세요.
-- 오래된 기사가 섞이느니 해당 항목을 "관련 동향 없음"으로 두는 것이 낫습니다.
+아래는 네이버 뉴스 API로 수집한 최근 14일 이내 실제 기사들입니다.
+※ 날짜 필터는 이미 코드에서 처리됐으므로 모든 기사는 14일 이내입니다.
+이 기사들만 사용해 요약하세요.
+
+=== LGU+ 품질 ===
+{format_articles(collected['lgu_품질'])}
+
+=== LGU+ AI ===
+{format_articles(collected['lgu_ai'])}
+
+=== LGU+ 신사업 ===
+{format_articles(collected['lgu_신사업'])}
+
+=== KT 품질 ===
+{format_articles(collected['kt_품질'])}
+
+=== KT AI ===
+{format_articles(collected['kt_ai'])}
+
+=== KT 신사업 ===
+{format_articles(collected['kt_신사업'])}
+
+=== SKT 품질 ===
+{format_articles(collected['skt_품질'])}
+
+=== SKT AI ===
+{format_articles(collected['skt_ai'])}
+
+=== SKT 신사업 ===
+{format_articles(collected['skt_신사업'])}
+
+=== 국내 IT 기업 ===
+{format_articles(collected['naver_it'] + collected['kakao_it'] + collected['coupang'] + collected['dangeun'])}
+
+=== AI / LLM 뉴스 ===
+{format_articles(collected['ai_llm'])}
+
+=== 해외 빅테크 ===
+{format_articles(collected['bigtech'])}
 
 [섹션 규칙]
 - telco 섹션은 통신 3사(LGU+, KT, SKT) 전용.
-- companies 섹션은 **통신 3사 제외** (LG유플러스, KT, SKT 이름이 들어가면 안 됨).
-- companies는 국내 IT/플랫폼/커머스 + 해외 IT/빅테크 중심으로 구성.
+- companies 섹션은 통신 3사 제외 (LG유플러스, KT, SKT 이름 포함 금지).
+- companies는 국내 IT/플랫폼/커머스 + 해외 IT/빅테크 중심.
 
 [품질 기준]
-- URL은 실제 기사 원문 링크(언론사/공식 블로그 원문) 사용.
-- url을 채운 항목은 해당 요약이 그 URL 기사와 직접 대응되어야 함.
-- 유효 기사가 없는 항목은 억지 생성하지 말고 "관련 동향 없음" 또는 ""로 처리.
-
-수집 영역:
-1. 통신 3사 (LG유플러스, KT, SKT) – 품질/AI/신사업
-2. 주요 기업 동향 (※ 통신 3사 제외): 국내 IT(네이버, 카카오, 당근, 쿠팡 등) + 해외 IT/빅테크
-3. 국내외 AI 산업 전반 (에이전틱 AI, LLM, 정책 등)
-4. 해외 빅테크 동향 (Google, Microsoft, OpenAI, Meta, Apple 등)
+- url 필드는 위에서 제공된 기사의 실제 URL만 사용. 없으면 빈 문자열 "".
+- 기사가 없는 항목은 억지로 생성하지 말고 "관련 동향 없음"으로 처리.
 
 출력 스키마 (JSON):
 {{
@@ -191,7 +305,7 @@ async def generate_briefing() -> dict:
     {{
       "title": "뉴스 제목",
       "bullets": ["핵심 포인트 1 (이모지 포함)", "핵심 포인트 2", "핵심 포인트 3"],
-      "source": "출처 (예: MIT Technology Review)",
+      "source": "출처 (예: 전자신문)",
       "url": "해당 뉴스 기사의 실제 URL (없으면 빈 문자열)"
     }}
   ]
@@ -199,14 +313,12 @@ async def generate_briefing() -> dict:
 
 출력 규칙(강제):
 - ai_news는 3~5건.
-- companies는 3~5개 기업, **통신3사(LGU+/KT/SKT) 제외**.
-- companies·telco의 모든 *_url/url은 실제 기사 URL만 입력, 없으면 "".
+- companies는 3~5개 기업, 통신3사(LGU+/KT/SKT) 제외.
+- companies·telco의 모든 *_url/url은 위에서 제공된 실제 기사 URL만 입력, 없으면 "".
 - quality 사례가 없으면 [{{"type":"해당없음","company":"","desc":"관련 동향 없음"}}]로 반환.
-- 해당 섹션에 뉴스가 부족하면 "관련 동향 없음"으로 명시.
-
-최종 출력은 JSON 객체 하나만 반환.
-뉴스가 부족하거나 없더라도 절대 거부하지 말고, 해당 필드를 "관련 동향 없음" 또는 빈 문자열("")로 채워서 반드시 JSON만 반환하세요.
-설명 텍스트, 사과 문구, 마크다운은 절대 출력 금지."""
+- 해당 섹션에 기사가 부족하면 "관련 동향 없음"으로 명시.
+- 최종 출력은 JSON 객체 하나만 반환.
+- 설명 텍스트, 사과 문구, 마크다운은 절대 출력 금지."""
 
     try:
         raw = await asyncio.wait_for(call_claude(SYSTEM, USER), timeout=100)
@@ -214,7 +326,7 @@ async def generate_briefing() -> dict:
         print("❌ Claude API 타임아웃 (100초 초과)")
         raise
 
-    # JSON 파싱: 응답 어디서든 { ... } 블록 추출
+    # JSON 파싱
     try:
         start = raw.index("{")
         end = raw.rindex("}") + 1
@@ -252,7 +364,7 @@ async def lifespan(app: FastAPI):
         except Exception:
             pass
 
-    # 2) ✅ 캐시가 없으면 서버 시작 시 즉시 브리핑 생성 (백그라운드)
+    # 2) 캐시가 없으면 서버 시작 시 즉시 브리핑 생성 (백그라운드)
     if cache["briefing"] is None:
         print("캐시 없음 → 브리핑 즉시 생성 시작 (백그라운드)...")
         asyncio.create_task(scheduled_task())
